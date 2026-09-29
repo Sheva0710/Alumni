@@ -11,27 +11,34 @@
 ---
 
 ## 📌 İçindekiler
-- [Proje Konsepti ve Amacı](#-proje-konsepti-ve-amacı)
+- [Proje Kapsamı ve Temel Modüller](#-proje-kapsamı-ve-temel-modüller)
+- [Kritik İş Kuralları (Business Rules)](#-kritik-iş-kuralları-business-rules)
+- [Kapsam Dışı (Out of Scope)](#-kapsam-dışı-out-of-scope)
 - [Teknoloji Yığını ve Tercih Nedenleri](#-teknoloji-yığını-ve-tercih-nedenleri)
 - [Zayıf Yönler ve Risk Analizi](#-zayıf-yönler-ve-risk-analizi)
 - [Geliştirme Metodolojisi](#-geliştirme-metodolojisi)
 - [Önerilen Sistem Mimarisi](#-önerilen-sistem-mimarisi)
+- [Mevcut Uç Noktalar (Aktif Rotalar)](#-mevcut-uç-noktalar-aktif-rotalar)
 - [Kurulum ve Başlangıç](#-kurulum-ve-başlangıç)
-- [Haftalık Yol Haritası ve Git İş Akışı](#-haftalık-yol-haritası-ve-git-iş-akışı)
+- [Geliştirme Süreci (Changelog)](#-geliştirme-süreci-changelog)
 
 ---
 
-## 🎯 Proje Konsepti ve Amacı
+## 🎯 Proje Kapsamı ve Temel Modüller
+Alumni Tracking System, mezunların kariyer süreçlerini, çalıştıkları şirketleri, yeteneklerini (skills) ve iletişim ağlarını takip eden kurumsal bir backend platformudur. Temel modüller:
+1. **Mezun Profil ve Özgeçmiş Modülü:** Mezuniyet yılı, fakülte, bölüm, iletişim ve ağ profilleri.
+2. **Kariyer ve İstihdam Geçmişi Modülü:** Çalışılan kurumlar, unvanlar, sektör bilgisi ve yetenek eşleştirmeleri.
+3. **Doğrulama ve Yetkilendirme Mekanizması:** Yönetici / Kariyer Merkezi onay iş akışı (`Status: Pending, Approved, Rejected`).
+4. **İlişkisel Arama ve Filtreleme:** Bölüm, şirket, unvan ve yetenek kriterlerine göre dinamik arama.
+5. **İstihdam Analitiği ve İstatistik Raporlama Modülü:** Bölüm bazlı istihdam oranı, ortalama işe giriş süresi ve sektörel dağılım analizleri.
 
-Üniversiteler ile mezunlar arasındaki bağların kopmaması, hem mevcut öğrencilerin kariyer rehberliği alabilmesi hem de üniversitenin mezun istihdam verilerini analiz edebilmesi açısından kritik öneme sahiptir.
+## 📋 Kritik İş Kuralları (Business Rules)
+* **Doğrulanmış Profil Kuralı:** Yalnızca yönetici tarafından onaylanmış (`Status = Approved`) profiller istatistiklerde ve genel aramalarda listelenir.
+* **Aktif İstihdam Bütünlüğü:** Bir mezunun birden fazla geçmiş iş deneyimi olabilir ancak aynı anda sadece bir adet güncel/aktif (`IsCurrent = true`) iş kaydı tutulabilir.
+* **İlişkisel Normalizasyon:** Şirket, bölüm ve sektör tanımları serbest metin değil, veri bütünlüğü için ilişkisel tablolar üzerinden yönetilir.
 
-**Alumni Tracking System**, mezunların:
-- Kariyer süreçlerini (pozisyon, unvan, sektör değişiklikleri),
-- Çalıştıkları şirketleri ve geçmiş tecrübelerini,
-- Sahip oldukları teknik ve sosyal yetenekleri (skills),
-- Mezunlar, öğrenciler ve akademisyenler arasındaki iletişim ve mentörlük ağlarını
-
-ilişkisel bir veri tabanı omurgası üzerinde güvenilir, hızlı ve ölçeklenebilir şekilde takip etmeyi amaçlar.
+## 🚫 Kapsam Dışı (Out of Scope)
+* Canlı anlık mesajlaşma (Real-time Chat), üçüncü parti ödeme altyapıları ve mobil bildirim mekanizmaları ilk faz kapsamı dışındadır.
 
 ---
 
@@ -92,37 +99,34 @@ Alumni Tracking System
 
 ---
 
-## 💻 Kurulum ve Başlangıç
-
-### Gereksinimler
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download) veya üzeri
-- [PostgreSQL 15+](https://www.postgresql.org/download/)
-- Git CLI
-
-### Adımlar
-```bash
-# 1. Depoyu klonlayın
-git clone <REPO_URL>
-cd Alumni
-
-# 2. Gerekli bağımlılıkları yükleyin
-dotnet restore
-
-# 3. Veritabanı bağlantı dizesini (appsettings.Development.json) yapılandırın
-# 4. EF Core veritabanı migration'larını uygulayın
-dotnet ef database update --project src/Infrastructure/Alumni.Persistence
-
-# 5. Projeyi çalıştırın
-dotnet run --project src/Presentation/Alumni.API
-```
+## 🌐 Mevcut Uç Noktalar (Aktif Rotalar)
+Sistemde halihazırda çalışan HTTP uç noktaları:
+| HTTP Metodu | Uç Nokta (Route) | Açıklama |
+|---|---|---|
+| `GET` | `/` | Web Vitrini / Ana Sayfa Prototipi |
+| `GET` | `/about` | Platform Misyonu ve Hakkında Sayfası |
+| `GET` | `/hello` | Temel Çalışma Doğrulama Testi |
+| `GET` | `/hello/{name}` | Dinamik Route Parametresi Testi |
+| `GET` | `/sum/{n1}/{n2}` | Sayısal Hesaplama ve Parametre Doğrulama Testi |
 
 ---
 
-## 📅 Haftalık Yol Haritası
+## 🚀 Kurulum ve Başlangıç
+Projeyi yerel ortamda çalıştırmak için:
+1. Depoyu klonlayıp API projesinin dizinine gidin:
+   `cd src/Presentation/Alumni.API`
+2. Uygulamayı başlatın:
+   `dotnet run`
+3. Proje, nihai aşamada tüm veritabanı ve servisleriyle birlikte tek bir komutla ayağa kalkacak şekilde hedeflenmektedir:
+   `docker compose up`
 
-- [x] **Hafta 1:** Proje başlatma, mimari kararlar, Git deposu ve dokümantasyon kurulumu.
-- [ ] **Hafta 2:** Veritabanı modelleme (PostgreSQL & EF Core Entities) ve Migration oluşturulması.
-- [ ] **Hafta 3:** Mezun, Şirket ve Yetenek CRUD API servislerinin geliştirilmesi.
-- [ ] **Hafta 4:** Kimlik doğrulama ve yetkilendirme (JWT & Role Based Access).
-- [ ] **Hafta 5:** Arama, filtreleme ve mezun ilişkisel ağ sorgularının optimizasyonu.
-- [ ] **Hafta 6:** Testler, dokümantasyon (Swagger/OpenAPI) ve canlıya alım hazırlıkları.
+---
+
+## 📅 Geliştirme Süreci (Changelog)
+### Hafta 1: Altyapı ve Planlama
+* Proje vizyonu, teknoloji tercihleri (C# & PostgreSQL) ve zayıf yön/kısıt analizleri belirlendi.
+* Clean Architecture katmanlı proje iskeleti kuruldu ve mimari altyapı dokümante edildi.
+### Hafta 2: Minimal API ve Temel Yönlendirmeler
+* Minimal API altyapısı üzerinde temel HTTP GET yönlendirmeleri yapılandırıldı.
+* Dinamik route parametresi alımı (`/hello/{name}`) ve hesaplama mekanizması (`/sum/{n1}/{n2}`) geliştirildi.
+* Sistemin erken aşama vitrinini sunan **Ana Sayfa (`/`)** ve **Hakkında (`/about`)** arayüzleri yayına alındı.

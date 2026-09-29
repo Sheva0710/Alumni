@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  alumni-api:
+    build:
+      context: .
+      dockerfile: src/Presentation/Alumni.API/Dockerfile
+    ports:
+      - "5273:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - alumni-db
+
+  alumni-db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=alumnidb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
