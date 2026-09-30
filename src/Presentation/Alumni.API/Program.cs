@@ -1,3 +1,5 @@
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
@@ -12,6 +15,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference("/api/swagger");
 }
 
 app.UseHttpsRedirection();
@@ -421,6 +425,135 @@ app.MapGet("/about", () =>
     return Results.Content(html, "text/html");
 });
 
+// Health route: GET /api/health returns API health status
+app.MapGet("/api/health", () => 
+{
+    return Results.Ok(new
+    {
+        status = "Healthy",
+        timestamp = DateTime.UtcNow,
+        service = "Alumni Tracking System API"
+    });
+});
+
+List<User> Users = new()
+{
+    new User { Id = 1, FirstName = "Ahmet", LastName = "Yılmaz", Email = "ahmet.yilmaz@example.com", Role = "Admin", CreatedAt = DateTime.UtcNow },
+    new User { Id = 2, FirstName = "Ayşe", LastName = "Demir", Email = "ayse.demir@example.com", Role = "Alumni", CreatedAt = DateTime.UtcNow }
+};
+
+app.MapGet("/api/users", () => Results.Ok(Users));
+
+app.MapGet("/api/users/{id}", (int id) =>
+{
+    var user = Users.FirstOrDefault(u => u.Id == id);
+    if (user == null)
+    {
+        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+    }
+    return Results.Ok(user);
+});
+
+app.MapPost("/api/users", (CreateUserRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
+    {
+        return Results.BadRequest("Ad ve e-posta zorunludur.");
+    }
+
+    var newUser = new User
+    {
+        Id = Users.Count > 0 ? Users.Max(u => u.Id) + 1 : 1,
+        FirstName = request.FirstName,
+        LastName = request.LastName,
+        Email = request.Email,
+        Role = request.Role ?? "User",
+        CreatedAt = DateTime.UtcNow
+    };
+
+    Users.Add(newUser);
+
+    return Results.Created($"/api/users/{newUser.Id}", newUser);
+});
+
+app.MapPut("/api/users/{id}", (int id, UpdateUserRequest request) =>
+{
+    var user = Users.FirstOrDefault(u => u.Id == id);
+    if (user == null)
+    {
+        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+    }
+
+    user.FirstName = request.FirstName;
+    user.LastName = request.LastName;
+    user.Email = request.Email;
+    user.Role = request.Role;
+
+    return Results.Ok(user);
+});
+
+app.MapPatch("/api/users/{id}", (int id, PatchUserRequest request) =>
+{
+    var user = Users.FirstOrDefault(u => u.Id == id);
+    if (user == null)
+    {
+        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName;
+    if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName;
+    if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email;
+    if (!string.IsNullOrWhiteSpace(request.Role)) user.Role = request.Role;
+
+    return Results.Ok(user);
+});
+
+app.MapDelete("/api/users/{id}", (int id) =>
+{
+    var user = Users.FirstOrDefault(u => u.Id == id);
+    if (user == null)
+    {
+        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+    }
+
+    Users.Remove(user);
+    return Results.NoContent();
+});
+
 app.MapControllers();
 
 app.Run();
+
+public class User
+{
+    public int Id { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Role { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateUserRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Role { get; set; }
+}
+
+public class UpdateUserRequest
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+}
+
+public class PatchUserRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Role { get; set; }
+}

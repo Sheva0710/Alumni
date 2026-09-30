@@ -99,7 +99,11 @@ Alumni Tracking System
 
 ---
 
-## 🌐 Mevcut Uç Noktalar (Aktif Rotalar)
+## 🌐 Dokümantasyon / API Uç Noktaları
+
+* **API Swagger / OpenAPI dokümantasyonuna `/api/swagger` üzerinden erişilebilir.**
+* **Dinamik Dokümantasyon İlkesi:** Projeye ilerleyen haftalarda eklenecek tüm yeni Minimal API rotaları, `EndpointsApiExplorer` ve Swagger altyapısı sayesinde herhangi bir manuel müdahaleye gerek kalmadan `/api/swagger` arayüzüne otomatik olarak yansıtılacaktır.
+
 Sistemde halihazırda çalışan HTTP uç noktaları:
 | HTTP Metodu | Uç Nokta (Route) | Açıklama |
 |---|---|---|
@@ -108,6 +112,14 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/hello` | Temel Çalışma Doğrulama Testi |
 | `GET` | `/hello/{name}` | Dinamik Route Parametresi Testi |
 | `GET` | `/sum/{n1}/{n2}` | Sayısal Hesaplama ve Parametre Doğrulama Testi |
+| `GET` | `/api/health` | API Sağlık Durumu |
+| `GET` | `/api/users` | Tüm Kullanıcıları Listeleme |
+| `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı Getirme |
+| `POST` | `/api/users` | Yeni Kullanıcı Ekleme |
+| `PUT` | `/api/users/{id}` | Kullanıcı Tam Güncelleme |
+| `PATCH`| `/api/users/{id}` | Kullanıcı Kısmi Güncelleme |
+| `DELETE`| `/api/users/{id}`| Kullanıcı Silme |
+
 
 ---
 
