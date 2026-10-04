@@ -232,20 +232,20 @@ app.MapGet("/", () =>
     """;
     
     return Results.Content(html, "text/html");
-});
+}).WithTags("General");
 
 // Hello route: GET /hello returns "Hello,World!"
-app.MapGet("/hello", () => "Hello,World!");
+app.MapGet("/hello", () => "Hello,World!").WithTags("Test");
 
 // Dynamic hello route: GET /hello/{name} returns "Hello,{name}!"
-app.MapGet("/hello/{name}", (string name) => $"Hello,{name}!");
+app.MapGet("/hello/{name}", (string name) => $"Hello,{name}!").WithTags("Test");
 
 // Sum route: GET /sum/{number1:double}/{number2:double} returns sum
 app.MapGet("/sum/{number1:double}/{number2:double}", (double number1, double number2) =>
 {
     double sum = number1 + number2;
     return sum;
-});
+}).WithTags("Test");
 
 // About route: GET /about returns HTML about page
 app.MapGet("/about", () => 
@@ -423,7 +423,7 @@ app.MapGet("/about", () =>
     """;
     
     return Results.Content(html, "text/html");
-});
+}).WithTags("General");
 
 // Health route: GET /api/health returns API health status
 app.MapGet("/api/health", () => 
@@ -434,91 +434,117 @@ app.MapGet("/api/health", () =>
         timestamp = DateTime.UtcNow,
         service = "Alumni Tracking System API"
     });
-});
+}).WithTags("Health");
 
+object _usersLock = new();
 List<User> Users = new()
 {
     new User { Id = 1, FirstName = "Ahmet", LastName = "Yılmaz", Email = "ahmet.yilmaz@example.com", Role = "Admin", CreatedAt = DateTime.UtcNow },
     new User { Id = 2, FirstName = "Ayşe", LastName = "Demir", Email = "ayse.demir@example.com", Role = "Alumni", CreatedAt = DateTime.UtcNow }
 };
 
-app.MapGet("/api/users", () => Results.Ok(Users));
+app.MapGet("/api/users", () => 
+{
+    lock (_usersLock)
+    {
+        return Results.Ok(Users.ToList());
+    }
+}).WithTags("Users");
 
 app.MapGet("/api/users/{id}", (int id) =>
 {
-    var user = Users.FirstOrDefault(u => u.Id == id);
-    if (user == null)
+    lock (_usersLock)
     {
-        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+        var user = Users.FirstOrDefault(u => u.Id == id);
+        if (user == null)
+        {
+            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
+        }
+        return Results.Ok(user);
     }
-    return Results.Ok(user);
-});
+}).WithTags("Users");
 
 app.MapPost("/api/users", (CreateUserRequest request) =>
 {
-    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
+    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
     {
-        return Results.BadRequest("Ad ve e-posta zorunludur.");
+        return Results.Problem(statusCode: 400, detail: "Ad ve geçerli bir e-posta zorunludur.");
     }
 
-    var newUser = new User
+    lock (_usersLock)
     {
-        Id = Users.Count > 0 ? Users.Max(u => u.Id) + 1 : 1,
-        FirstName = request.FirstName,
-        LastName = request.LastName,
-        Email = request.Email,
-        Role = request.Role ?? "User",
-        CreatedAt = DateTime.UtcNow
-    };
+        var newUser = new User
+        {
+            Id = Users.Count > 0 ? Users.Max(u => u.Id) + 1 : 1,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Email = request.Email,
+            Role = request.Role ?? "User",
+            CreatedAt = DateTime.UtcNow
+        };
 
-    Users.Add(newUser);
-
-    return Results.Created($"/api/users/{newUser.Id}", newUser);
-});
+        Users.Add(newUser);
+        return Results.Created($"/api/users/{newUser.Id}", newUser);
+    }
+}).WithTags("Users");
 
 app.MapPut("/api/users/{id}", (int id, UpdateUserRequest request) =>
 {
-    var user = Users.FirstOrDefault(u => u.Id == id);
-    if (user == null)
+    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
     {
-        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+        return Results.Problem(statusCode: 400, detail: "Ad ve geçerli bir e-posta zorunludur.");
     }
 
-    user.FirstName = request.FirstName;
-    user.LastName = request.LastName;
-    user.Email = request.Email;
-    user.Role = request.Role;
+    lock (_usersLock)
+    {
+        var user = Users.FirstOrDefault(u => u.Id == id);
+        if (user == null)
+        {
+            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
+        }
 
-    return Results.Ok(user);
-});
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.Email = request.Email;
+        user.Role = request.Role;
+
+        return Results.Ok(user);
+    }
+}).WithTags("Users");
 
 app.MapPatch("/api/users/{id}", (int id, PatchUserRequest request) =>
 {
-    var user = Users.FirstOrDefault(u => u.Id == id);
-    if (user == null)
+    lock (_usersLock)
     {
-        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
+        var user = Users.FirstOrDefault(u => u.Id == id);
+        if (user == null)
+        {
+            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName;
+        if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName;
+        if (!string.IsNullOrWhiteSpace(request.Email) && request.Email.Contains("@")) user.Email = request.Email;
+        if (!string.IsNullOrWhiteSpace(request.Role)) user.Role = request.Role;
+
+        return Results.Ok(user);
     }
-
-    if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName;
-    if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName;
-    if (!string.IsNullOrWhiteSpace(request.Email)) user.Email = request.Email;
-    if (!string.IsNullOrWhiteSpace(request.Role)) user.Role = request.Role;
-
-    return Results.Ok(user);
-});
+}).WithTags("Users");
 
 app.MapDelete("/api/users/{id}", (int id) =>
 {
-    var user = Users.FirstOrDefault(u => u.Id == id);
-    if (user == null)
+    lock (_usersLock)
     {
-        return Results.NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
-    }
+        var user = Users.FirstOrDefault(u => u.Id == id);
+        if (user == null)
+        {
+            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
+        }
 
-    Users.Remove(user);
-    return Results.NoContent();
-});
+        Users.Remove(user);
+        return Results.NoContent();
+    }
+}).WithTags("Users");
 
 app.MapControllers();
 

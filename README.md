@@ -142,3 +142,10 @@ Projeyi yerel ortamda çalıştırmak için:
 * Minimal API altyapısı üzerinde temel HTTP GET yönlendirmeleri yapılandırıldı.
 * Dinamik route parametresi alımı (`/hello/{name}`) ve hesaplama mekanizması (`/sum/{n1}/{n2}`) geliştirildi.
 * Sistemin erken aşama vitrinini sunan **Ana Sayfa (`/`)** ve **Hakkında (`/about`)** arayüzleri yayına alındı.
+### Hafta 03: In-Memory User CRUD ve API Dokümantasyonu
+* In-memory User CRUD mimarisi kuruldu (GET, POST, PUT, PATCH, DELETE `/api/users` rotaları).
+* PUT (tam güncelleme) ile PATCH (kısmi güncelleme) uç noktaları standartlara uygun ayrıldı.
+* Sistem sağlık kontrolü için `GET /api/health` uç noktası eklendi.
+* API dokümantasyonu Scalar ile `/api/swagger` adresinde yapılandırıldı.
+* API isteklerinin testi için Postman çalışma alanı ve koleksiyonu projeye dahil edildi.
+
