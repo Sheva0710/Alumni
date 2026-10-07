@@ -99,6 +99,34 @@ Alumni Tracking System
 
 ---
 
+## 🏗 Proje Dizin Yapısı ve Dağıtılmış MVC Mimarisi
+
+Projemiz tek bir projeye sıkıştırılmış basit bir MVC (Model-View-Controller) mimarisi değildir. Kurumsal ihtiyaçlara cevap verebilmesi adına **Clean Architecture** standartlarına göre katmanlara ayrılmış bir MVC (**Distributed MVC**) modeli benimsemiştir. Geleneksel MVC bileşenleri, sorumlulukların ayrılığı (Separation of Concerns) prensibi gereği farklı katmanlara dağıtılmıştır.
+
+```text
+Alumni/
+├── src/
+│   ├── Core/
+│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - Örn: User.cs)
+│   │   └── Alumni.Application/      -> [MODEL] Veri Transfer Objeleri (DTOs - Örn: CreateUserRequest)
+│   ├── Infrastructure/
+│   │   ├── Alumni.Infrastructure/   -> [ALTYAPI] Dış servis entegrasyonları
+│   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı entegrasyonu (PostgreSQL vb.)
+│   └── Presentation/
+│       └── Alumni.API/
+│           ├── Controllers/         -> [CONTROLLER] HTTP rotalarını ve metodlarını yöneten sınıflar
+│           ├── Program.cs           -> [VIEW] JSON çıktıları, root HTML sayfası ve Swagger UI
+│           └── Dockerfile           -> API Konteyner inşası
+├── docker-compose.yml               -> Proje orkestrasyonu
+└── README.md
+```
+
+- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını temsil eden çekirdek varlıkları (Entity) tutarken, `Alumni.Application` istemci ile sunucu arasında gidip gelen verileri (DTO) barındırır.
+- **View (V):** Modern bir Web API projesi olduğu için View katmanı klasik HTML sayfaları (Razor vb.) değildir. İstemciye dönülen JSON veri formatı, `/api/swagger` üzerinden sunulan OpenAPI arayüzü ve kök dizindeki karşılama (HTML) sayfası View görevini üstlenir.
+- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında yer alır. İstemciden gelen HTTP isteklerini (GET, POST, PUT, vb.) karşılar, gelen DTO verilerini doğrular ve işlemleri alt katmanlara devreder.
+
+---
+
 ## 🌐 Dokümantasyon / API Uç Noktaları
 
 * **API Swagger / OpenAPI dokümantasyonuna `/api/swagger` üzerinden erişilebilir.**

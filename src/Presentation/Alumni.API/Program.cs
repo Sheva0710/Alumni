@@ -4,7 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
@@ -436,150 +436,12 @@ app.MapGet("/api/health", () =>
     });
 }).WithTags("Health");
 
-object _usersLock = new();
-List<User> Users = new()
-{
-    new User { Id = 1, FirstName = "Ahmet", LastName = "Yılmaz", Email = "ahmet.yilmaz@example.com", Role = "Admin", CreatedAt = DateTime.UtcNow },
-    new User { Id = 2, FirstName = "Ayşe", LastName = "Demir", Email = "ayse.demir@example.com", Role = "Alumni", CreatedAt = DateTime.UtcNow }
-};
 
-app.MapGet("/api/users", () => 
-{
-    lock (_usersLock)
-    {
-        return Results.Ok(Users.ToList());
-    }
-}).WithTags("Users");
-
-app.MapGet("/api/users/{id}", (int id) =>
-{
-    lock (_usersLock)
-    {
-        var user = Users.FirstOrDefault(u => u.Id == id);
-        if (user == null)
-        {
-            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
-        }
-        return Results.Ok(user);
-    }
-}).WithTags("Users");
-
-app.MapPost("/api/users", (CreateUserRequest request) =>
-{
-    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
-    {
-        return Results.Problem(statusCode: 400, detail: "Ad ve geçerli bir e-posta zorunludur.");
-    }
-
-    lock (_usersLock)
-    {
-        var newUser = new User
-        {
-            Id = Users.Count > 0 ? Users.Max(u => u.Id) + 1 : 1,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            Email = request.Email,
-            Role = request.Role ?? "User",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        Users.Add(newUser);
-        return Results.Created($"/api/users/{newUser.Id}", newUser);
-    }
-}).WithTags("Users");
-
-app.MapPut("/api/users/{id}", (int id, UpdateUserRequest request) =>
-{
-    if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains("@"))
-    {
-        return Results.Problem(statusCode: 400, detail: "Ad ve geçerli bir e-posta zorunludur.");
-    }
-
-    lock (_usersLock)
-    {
-        var user = Users.FirstOrDefault(u => u.Id == id);
-        if (user == null)
-        {
-            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
-        }
-
-        user.FirstName = request.FirstName;
-        user.LastName = request.LastName;
-        user.Email = request.Email;
-        user.Role = request.Role;
-
-        return Results.Ok(user);
-    }
-}).WithTags("Users");
-
-app.MapPatch("/api/users/{id}", (int id, PatchUserRequest request) =>
-{
-    lock (_usersLock)
-    {
-        var user = Users.FirstOrDefault(u => u.Id == id);
-        if (user == null)
-        {
-            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName;
-        if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName;
-        if (!string.IsNullOrWhiteSpace(request.Email) && request.Email.Contains("@")) user.Email = request.Email;
-        if (!string.IsNullOrWhiteSpace(request.Role)) user.Role = request.Role;
-
-        return Results.Ok(user);
-    }
-}).WithTags("Users");
-
-app.MapDelete("/api/users/{id}", (int id) =>
-{
-    lock (_usersLock)
-    {
-        var user = Users.FirstOrDefault(u => u.Id == id);
-        if (user == null)
-        {
-            return Results.Problem(statusCode: 404, detail: $"ID {id} olan kullanıcı bulunamadı.");
-        }
-
-        Users.Remove(user);
-        return Results.NoContent();
-    }
-}).WithTags("Users");
 
 app.MapControllers();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
 
-public class User
-{
-    public int Id { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? Role { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-public class CreateUserRequest
-{
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? Role { get; set; }
-}
-
-public class UpdateUserRequest
-{
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-}
-
-public class PatchUserRequest
-{
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public string? Email { get; set; }
-    public string? Role { get; set; }
-}

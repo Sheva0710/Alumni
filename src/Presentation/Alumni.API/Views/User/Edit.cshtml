@@ -1,0 +1,49 @@
+@model Alumni.Domain.Entities.User
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Düzenle</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #4F46E5; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
+        input[type="text"], input[type="email"] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #10B981; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #059669; }
+        .back-link { display: inline-block; margin-top: 1rem; color: #6B7280; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kullanıcı Düzenle (ID: @Model.Id)</h1>
+        
+        <form method="post" action="/user/edit/@Model.Id">
+            <div class="form-group">
+                <label for="FirstName">Ad:</label>
+                <input type="text" id="FirstName" name="FirstName" value="@Model.FirstName" required />
+            </div>
+            <div class="form-group">
+                <label for="LastName">Soyad:</label>
+                <input type="text" id="LastName" name="LastName" value="@Model.LastName" />
+            </div>
+            <div class="form-group">
+                <label for="Email">E-Posta:</label>
+                <input type="email" id="Email" name="Email" value="@Model.Email" required />
+            </div>
+            <div class="form-group">
+                <label for="Role">Rol:</label>
+                <input type="text" id="Role" name="Role" value="@Model.Role" />
+            </div>
+            <button type="submit">Güncelle</button>
+        </form>
+
+        <a href="/user" class="back-link">← Listeye Dön</a>
+    </div>
+</body>
+</html>

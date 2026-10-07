@@ -1,0 +1,47 @@
+@model Alumni.Domain.Entities.User
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Detayları</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #4F46E5; border-bottom: 2px solid #E5E7EB; padding-bottom: 0.5rem; }
+        .detail-row { margin-bottom: 1rem; font-size: 1.1rem; }
+        .detail-label { font-weight: bold; color: #4B5563; display: inline-block; width: 120px; }
+        .back-link { display: inline-block; margin-top: 2rem; background-color: #E5E7EB; color: #374151; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-weight: bold; }
+        .back-link:hover { background-color: #D1D5DB; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kullanıcı Detayları</h1>
+        
+        <div class="detail-row">
+            <span class="detail-label">ID:</span>
+            <span>@Model.Id</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Ad Soyad:</span>
+            <span>@Model.FirstName @Model.LastName</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">E-Posta:</span>
+            <span>@Model.Email</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Rol:</span>
+            <span style="background-color: #EEF2FF; color: #4F46E5; padding: 3px 8px; border-radius: 4px; font-size: 0.9rem;">@Model.Role</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Kayıt Tarihi:</span>
+            <span>@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</span>
+        </div>
+
+        <a href="/user" class="back-link">← Listeye Dön</a>
+    </div>
+</body>
+</html>
