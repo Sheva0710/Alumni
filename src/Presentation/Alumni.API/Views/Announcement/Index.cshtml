@@ -1,0 +1,102 @@
+@model List<Alumni.Domain.Entities.Announcement>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duyuru Yönetimi (MVC)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #333; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1, h2 { color: #4F46E5; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f3f4f6; color: #4b5563; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
+        input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
+        button { background-color: #4F46E5; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #4338CA; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; }
+        .badge-active { background-color: #D1FAE5; color: #065F46; }
+        .badge-inactive { background-color: #FEE2E2; color: #991B1B; }
+        .nav-links { margin-bottom: 1.5rem; }
+        .nav-links a { color: #4F46E5; text-decoration: none; font-weight: 500; margin-right: 1rem; }
+        .nav-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-links">
+            <a href="/">← Ana Sayfa</a>
+            <a href="/users">Kullanıcı Yönetimi</a>
+        </div>
+
+        <h1>📢 Duyuru Yönetimi (MVC View)</h1>
+        
+        <h2>Yayınlanan Duyurular</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Başlık</th>
+                    <th>Yayınlayan</th>
+                    <th>Tarih</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #6b7280;">Henüz duyuru bulunmamaktadır.</td>
+                    </tr>
+                }
+                @foreach(var item in Model)
+                {
+                    <tr>
+                        <td>@item.Id</td>
+                        <td><strong>@item.Title</strong></td>
+                        <td>@item.Author</td>
+                        <td>@item.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <span class="badge @(item.IsActive ? "badge-active" : "badge-inactive")">
+                                @(item.IsActive ? "Aktif" : "Pasif")
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/announcements/details/@item.Id" style="margin-right: 5px; color: #4F46E5; text-decoration: none;">Detay</a>
+                            <a href="/announcements/edit/@item.Id" style="margin-right: 5px; color: #10B981; text-decoration: none;">Düzenle</a>
+                            <form action="/announcements/delete/@item.Id" method="post" style="display:inline;">
+                                <button type="submit" style="background-color: #EF4444; padding: 5px 10px; font-size: 0.8rem;">Sil</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <hr />
+
+        <h2>Yeni Duyuru Ekle</h2>
+        <form method="post" action="/announcements">
+            <div class="form-group">
+                <label for="Title">Duyuru Başlığı:</label>
+                <input type="text" id="Title" name="Title" required placeholder="Örn: Kariyer Zirvesi 2026" />
+            </div>
+            <div class="form-group">
+                <label for="Content">Duyuru İçeriği:</label>
+                <textarea id="Content" name="Content" required placeholder="Duyuru detaylarını buraya yazın..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="Author">Yayınlayan Birim/Kişi:</label>
+                <input type="text" id="Author" name="Author" placeholder="Kariyer Merkezi" />
+            </div>
+            <button type="submit">Duyuruyu Yayınla</button>
+        </form>
+    </div>
+</body>
+</html>

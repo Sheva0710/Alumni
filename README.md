@@ -107,28 +107,28 @@ Projemiz tek bir projeye sıkıştırılmış basit bir MVC (Model-View-Controll
 Alumni/
 ├── src/
 │   ├── Core/
-│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - Örn: User.cs)
-│   │   └── Alumni.Application/      -> [MODEL] Veri Transfer Objeleri (DTOs) ve In-Memory UserStore
+│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - User.cs, Announcement.cs)
+│   │   └── Alumni.Application/      -> [MODEL] DTOs, In-Memory UserStore, IAnnouncementService & AnnouncementService
 │   ├── Infrastructure/
 │   │   ├── Alumni.Infrastructure/   -> [ALTYAPI] Dış servis entegrasyonları
 │   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı entegrasyonu (PostgreSQL vb.)
 │   └── Presentation/
 │       └── Alumni.API/
-│           ├── Controllers/         -> [CONTROLLER] MVC (UserController) ve Web API (ApiUserController) sınıfları
-│           ├── Views/               -> [VIEW] Razor View arayüzleri (User: Index, Details, Edit)
+│           ├── Controllers/         -> [CONTROLLER] MVC (UserController, AnnouncementController) ve API (ApiUserController, ApiAnnouncementController)
+│           ├── Views/               -> [VIEW] Razor View arayüzleri (User: Index, Details, Edit | Announcement: Index, Details, Edit)
 │           ├── Program.cs           -> Uygulama başlangıç yapılandırması, DI ve Middleware
 │           └── Dockerfile           -> API Konteyner inşası
 ├── docker-compose.yml               -> Proje orkestrasyonu
 └── README.md
 ```
 
-- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO) ve veritabanı bağlantısı olmaksızın çalışan thread-safe in-memory CRUD operasyonlarını (`UserStore.cs`) yönetir.
+- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`, `Announcement.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO), veritabanı bağlantısı olmaksızın çalışan in-memory veri havuzlarını (`UserStore.cs`) ve servis arayüzlerini (`IAnnouncementService`) yönetir.
 - **View (V):** İki farklı sunum katmanından oluşur:
-  1. **Razor HTML Views (`Views/User/`):** `/users` rotası üzerinden sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Index.cshtml`, `Edit.cshtml`, `Details.cshtml`).
-  2. **API & Dokümantasyon Arayüzü:** `/api/users` üzerinden dönülen JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
-- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında iki ayrı controller ile yönetilir:
-  1. `UserController`: `/users` (ve geriye dönük `/user`) rotası üzerinden Razor View sayfalarını ve form işlemlerini yönetir.
-  2. `ApiUserController`: `/api/users` rotası üzerinden RESTful JSON API isteklerini (GET, POST, PUT, PATCH, DELETE) yönetir.
+  1. **Razor HTML Views (`Views/`):** Sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Views/User/`) ve duyuru yönetim arayüzleri (`Views/Announcement/`).
+  2. **API & Dokümantasyon Arayüzü:** `/api/users` ve `/api/announcements` üzerinden dönülen JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
+- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında hem MVC hem de API controller'ları ile yönetilir:
+  1. `UserController` & `AnnouncementController`: Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ları (`/users`, `/announcements`).
+  2. `ApiUserController` & `ApiAnnouncementController`: RESTful JSON API isteklerini yöneten API controller'ları (`/api/users`, `/api/announcements`).
 
 ---
 
@@ -152,12 +152,23 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/users/edit/{id}` | Kullanıcı Düzenleme Formu (MVC View) |
 | `POST` | `/users/edit/{id}` | Kullanıcı Bilgilerini Güncelleme (MVC Form POST) |
 | `POST` | `/users/delete/{id}` | Kullanıcı Kaydını Silme (MVC Form POST) |
+| `GET` | `/announcements` | Duyuru Listeleme ve Ekleme Formu (MVC Razor View) |
+| `POST` | `/announcements` | Yeni Duyuru Ekleme (MVC Form POST) |
+| `GET` | `/announcements/details/{id}` | Duyuru Detay Görüntüleme (MVC View) |
+| `GET` | `/announcements/edit/{id}` | Duyuru Düzenleme Formu (MVC View) |
+| `POST` | `/announcements/edit/{id}` | Duyuru Güncelleme (MVC Form POST) |
+| `POST` | `/announcements/delete/{id}` | Duyuru Silme (MVC Form POST) |
 | `GET` | `/api/users` | Tüm Kullanıcıları Listeleme (JSON API) |
 | `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı Getirme (JSON API) |
 | `POST` | `/api/users` | Yeni Kullanıcı Ekleme (JSON API) |
 | `PUT` | `/api/users/{id}` | Kullanıcı Tam Güncelleme (JSON API) |
 | `PATCH`| `/api/users/{id}` | Kullanıcı Kısmi Güncelleme (JSON API) |
 | `DELETE`| `/api/users/{id}`| Kullanıcı Silme (JSON API) |
+| `GET` | `/api/announcements` | Tüm Duyuruları Listeleme (JSON API) |
+| `GET` | `/api/announcements/{id}` | ID'ye Göre Tekil Duyuru Getirme (JSON API) |
+| `POST` | `/api/announcements` | Yeni Duyuru Ekleme (JSON API) |
+| `PUT` | `/api/announcements/{id}` | Duyuru Güncelleme (JSON API) |
+| `DELETE`| `/api/announcements/{id}` | Duyuru Silme (JSON API) |
 
 ---
 
@@ -190,13 +201,19 @@ Projeyi yerel ortamda çalıştırmak için:
 * **Dağıtılmış MVC (Distributed MVC) Mimarisi:** Clean Architecture katmanları MVC sorumluluklarıyla eşleştirildi ve dokümante edildi.
 * **Veritabanı Bağımsız User Modeli ve In-Memory CRUD:** `User` varlığı ile `UserStore` veri havuzu üzerinde thread-safe `GetAll`, `GetById`, `Add`, `Update`, `Patch`, `Delete` operasyonları kuruldu.
 * **İkili Controller Mimarisi:**
-  * `UserController`: `/users` (ve geriye dönük `/user`) rotası üzerinden Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ı oluşturuldu.
-  * `ApiUserController`: `/api/users` rotası üzerinden JSON tabanlı RESTful CRUD işlemlerini yürüten API controller'ı oluşturuldu.
+  * `UserController`: `/users` rotası üzerinden Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ı.
+  * `ApiUserController`: `/api/users` rotası üzerinden JSON tabanlı RESTful CRUD işlemlerini yürüten API controller'ı.
 * **Razor View Katmanı (`Views/User`):**
   * `Index.cshtml`: Kayıtlı kullanıcıların listesi ve yeni kullanıcı ekleme formu (`GET /users`, `POST /users`).
   * `Details.cshtml`: Seçilen kullanıcının ayrıntılarını görüntüleme sayfası (`GET /users/details/{id}`).
   * `Edit.cshtml`: Kullanıcı bilgilerini güncelleme formu (`GET /users/edit/{id}`, `POST /users/edit/{id}`).
   * Kullanıcı silme iş akışı (`POST /users/delete/{id}`).
-* **Swagger / Scalar Dokümantasyonu:** `ApiUserController` rotaları `/api/swagger` üzerinde "Users" etiketiyle yapılandırıldı.
+* **Hafta 04 Ödevi (Announcement Modülü):**
+  * `Announcement` varlığı oluşturuldu (`Title`, `Content`, `Author`, `CreatedAt`, `IsActive`).
+  * Yönetim için `IAnnouncementService` interface'i ve in-memory `AnnouncementService` tanımlandı (veritabanı henüz bağlanmadı).
+  * `AnnouncementController` (MVC - `/announcements`) ve `ApiAnnouncementController` (API - `/api/announcements`) controller'ları kuruldu.
+  * `Views/Announcement` altında `Index.cshtml`, `Details.cshtml`, `Edit.cshtml` sayfaları ile tam CRUD arayüzü sağlandı.
+  * Scalar/OpenAPI dokümantasyonuna "Announcements" grubu eklendi.
+
 
 
