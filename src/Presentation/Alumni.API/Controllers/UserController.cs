@@ -1,98 +1,76 @@
 using Alumni.Application;
 using Alumni.Application.DTOs.Users;
 using Alumni.Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Alumni.API.Controllers
 {
+    [Route("users")]
     [Route("user")]
+    [Tags("Users (MVC)")]
     public class UserController : Controller
     {
         [HttpGet]
         public IActionResult Index()
         {
-            lock (UserStore.UsersLock)
-            {
-                return View(UserStore.Users.ToList());
-            }
+            return View(UserStore.GetAll());
         }
 
         [HttpGet("details/{id}")]
         public IActionResult Details(int id)
         {
-            lock (UserStore.UsersLock)
-            {
-                var user = UserStore.Users.FirstOrDefault(u => u.Id == id);
-                if (user == null) return NotFound();
-                
-                return View(user);
-            }
+            var user = UserStore.GetById(id);
+            if (user == null) return NotFound();
+
+            return View(user);
         }
 
         [HttpGet("edit/{id}")]
         public IActionResult Edit(int id)
         {
-            lock (UserStore.UsersLock)
-            {
-                var user = UserStore.Users.FirstOrDefault(u => u.Id == id);
-                if (user == null) return NotFound();
+            var user = UserStore.GetById(id);
+            if (user == null) return NotFound();
 
-                return View(user);
-            }
+            return View(user);
         }
 
+        [HttpPost]
         [HttpPost("create")]
         public IActionResult Create([FromForm] CreateUserRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Ad ve e-posta zorunludur.");
 
-            lock (UserStore.UsersLock)
+            var newUser = new User
             {
-                var newUser = new User
-                {
-                    Id = UserStore.Users.Count > 0 ? UserStore.Users.Max(u => u.Id) + 1 : 1,
-                    FirstName = request.FirstName,
-                    LastName = request.LastName,
-                    Email = request.Email,
-                    Role = request.Role ?? "User",
-                    CreatedAt = DateTime.UtcNow
-                };
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                Role = request.Role ?? "User"
+            };
 
-                UserStore.Users.Add(newUser);
-                // Başarılı işlem sonrası MVC'de listeye yönlendirilir
-                return RedirectToAction(nameof(Index));
-            }
+            UserStore.Add(newUser);
+            return Redirect("/users");
         }
 
         [HttpPost("edit/{id}")]
         public IActionResult Edit(int id, [FromForm] UpdateUserRequest request)
         {
-            lock (UserStore.UsersLock)
-            {
-                var user = UserStore.Users.FirstOrDefault(u => u.Id == id);
-                if (user == null) return NotFound();
+            var updated = UserStore.Update(id, request.FirstName, request.LastName, request.Email, request.Role);
+            if (!updated) return NotFound();
 
-                user.FirstName = request.FirstName;
-                user.LastName = request.LastName;
-                user.Email = request.Email;
-                user.Role = request.Role;
-
-                return RedirectToAction(nameof(Index));
-            }
+            return Redirect("/users");
         }
 
         [HttpPost("delete/{id}")]
         public IActionResult Delete(int id)
         {
-            lock (UserStore.UsersLock)
-            {
-                var user = UserStore.Users.FirstOrDefault(u => u.Id == id);
-                if (user == null) return NotFound();
+            var deleted = UserStore.Delete(id);
+            if (!deleted) return NotFound();
 
-                UserStore.Users.Remove(user);
-                return RedirectToAction(nameof(Index));
-            }
+            return Redirect("/users");
         }
     }
 }
+

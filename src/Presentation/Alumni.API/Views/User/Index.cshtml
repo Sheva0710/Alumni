@@ -48,9 +48,9 @@
                         <td>@user.Role</td>
                         <td>@user.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                         <td>
-                            <a href="/user/details/@user.Id" style="margin-right: 5px; color: #4F46E5; text-decoration: none;">Detaylar</a>
-                            <a href="/user/edit/@user.Id" style="margin-right: 5px; color: #10B981; text-decoration: none;">Düzenle</a>
-                            <form action="/user/delete/@user.Id" method="post" style="display:inline;">
+                            <a href="/users/details/@user.Id" style="margin-right: 5px; color: #4F46E5; text-decoration: none;">Detaylar</a>
+                            <a href="/users/edit/@user.Id" style="margin-right: 5px; color: #10B981; text-decoration: none;">Düzenle</a>
+                            <form action="/users/delete/@user.Id" method="post" style="display:inline;">
                                 <button type="submit" style="background-color: #EF4444; padding: 5px 10px; font-size: 0.8rem;">Sil</button>
                             </form>
                         </td>
@@ -62,7 +62,7 @@
         <hr />
 
         <h2>Yeni Kullanıcı Ekle</h2>
-        <form method="post" action="/user/create">
+        <form method="post" action="/users">
             <div class="form-group">
                 <label for="FirstName">Ad:</label>
                 <input type="text" id="FirstName" name="FirstName" required />

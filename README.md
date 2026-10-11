@@ -108,29 +108,34 @@ Alumni/
 ├── src/
 │   ├── Core/
 │   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - Örn: User.cs)
-│   │   └── Alumni.Application/      -> [MODEL] Veri Transfer Objeleri (DTOs - Örn: CreateUserRequest)
+│   │   └── Alumni.Application/      -> [MODEL] Veri Transfer Objeleri (DTOs) ve In-Memory UserStore
 │   ├── Infrastructure/
 │   │   ├── Alumni.Infrastructure/   -> [ALTYAPI] Dış servis entegrasyonları
 │   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı entegrasyonu (PostgreSQL vb.)
 │   └── Presentation/
 │       └── Alumni.API/
-│           ├── Controllers/         -> [CONTROLLER] HTTP rotalarını ve metodlarını yöneten sınıflar
-│           ├── Program.cs           -> [VIEW] JSON çıktıları, root HTML sayfası ve Swagger UI
+│           ├── Controllers/         -> [CONTROLLER] MVC (UserController) ve Web API (ApiUserController) sınıfları
+│           ├── Views/               -> [VIEW] Razor View arayüzleri (User: Index, Details, Edit)
+│           ├── Program.cs           -> Uygulama başlangıç yapılandırması, DI ve Middleware
 │           └── Dockerfile           -> API Konteyner inşası
 ├── docker-compose.yml               -> Proje orkestrasyonu
 └── README.md
 ```
 
-- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını temsil eden çekirdek varlıkları (Entity) tutarken, `Alumni.Application` istemci ile sunucu arasında gidip gelen verileri (DTO) barındırır.
-- **View (V):** Modern bir Web API projesi olduğu için View katmanı klasik HTML sayfaları (Razor vb.) değildir. İstemciye dönülen JSON veri formatı, `/api/swagger` üzerinden sunulan OpenAPI arayüzü ve kök dizindeki karşılama (HTML) sayfası View görevini üstlenir.
-- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında yer alır. İstemciden gelen HTTP isteklerini (GET, POST, PUT, vb.) karşılar, gelen DTO verilerini doğrular ve işlemleri alt katmanlara devreder.
+- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO) ve veritabanı bağlantısı olmaksızın çalışan thread-safe in-memory CRUD operasyonlarını (`UserStore.cs`) yönetir.
+- **View (V):** İki farklı sunum katmanından oluşur:
+  1. **Razor HTML Views (`Views/User/`):** `/users` rotası üzerinden sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Index.cshtml`, `Edit.cshtml`, `Details.cshtml`).
+  2. **API & Dokümantasyon Arayüzü:** `/api/users` üzerinden dönülen JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
+- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında iki ayrı controller ile yönetilir:
+  1. `UserController`: `/users` (ve geriye dönük `/user`) rotası üzerinden Razor View sayfalarını ve form işlemlerini yönetir.
+  2. `ApiUserController`: `/api/users` rotası üzerinden RESTful JSON API isteklerini (GET, POST, PUT, PATCH, DELETE) yönetir.
 
 ---
 
 ## 🌐 Dokümantasyon / API Uç Noktaları
 
 * **API Swagger / OpenAPI dokümantasyonuna `/api/swagger` üzerinden erişilebilir.**
-* **Dinamik Dokümantasyon İlkesi:** Projeye ilerleyen haftalarda eklenecek tüm yeni Minimal API rotaları, `EndpointsApiExplorer` ve Swagger altyapısı sayesinde herhangi bir manuel müdahaleye gerek kalmadan `/api/swagger` arayüzüne otomatik olarak yansıtılacaktır.
+* **Dinamik Dokümantasyon İlkesi:** Projeye eklenen tüm API rotaları, `EndpointsApiExplorer` ve Swagger altyapısı sayesinde herhangi bir manuel müdahaleye gerek kalmadan `/api/swagger` arayüzüne otomatik olarak yansıtılmaktadır.
 
 Sistemde halihazırda çalışan HTTP uç noktaları:
 | HTTP Metodu | Uç Nokta (Route) | Açıklama |
@@ -141,13 +146,18 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/hello/{name}` | Dinamik Route Parametresi Testi |
 | `GET` | `/sum/{n1}/{n2}` | Sayısal Hesaplama ve Parametre Doğrulama Testi |
 | `GET` | `/api/health` | API Sağlık Durumu |
-| `GET` | `/api/users` | Tüm Kullanıcıları Listeleme |
-| `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı Getirme |
-| `POST` | `/api/users` | Yeni Kullanıcı Ekleme |
-| `PUT` | `/api/users/{id}` | Kullanıcı Tam Güncelleme |
-| `PATCH`| `/api/users/{id}` | Kullanıcı Kısmi Güncelleme |
-| `DELETE`| `/api/users/{id}`| Kullanıcı Silme |
-
+| `GET` | `/users` | Kullanıcı Listeleme ve Ekleme Formu (MVC Razor View) |
+| `POST` | `/users` | Yeni Kullanıcı Ekleme (MVC Form POST) |
+| `GET` | `/users/details/{id}` | Kullanıcı Detay Görüntüleme (MVC View) |
+| `GET` | `/users/edit/{id}` | Kullanıcı Düzenleme Formu (MVC View) |
+| `POST` | `/users/edit/{id}` | Kullanıcı Bilgilerini Güncelleme (MVC Form POST) |
+| `POST` | `/users/delete/{id}` | Kullanıcı Kaydını Silme (MVC Form POST) |
+| `GET` | `/api/users` | Tüm Kullanıcıları Listeleme (JSON API) |
+| `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı Getirme (JSON API) |
+| `POST` | `/api/users` | Yeni Kullanıcı Ekleme (JSON API) |
+| `PUT` | `/api/users/{id}` | Kullanıcı Tam Güncelleme (JSON API) |
+| `PATCH`| `/api/users/{id}` | Kullanıcı Kısmi Güncelleme (JSON API) |
+| `DELETE`| `/api/users/{id}`| Kullanıcı Silme (JSON API) |
 
 ---
 
@@ -176,4 +186,17 @@ Projeyi yerel ortamda çalıştırmak için:
 * Sistem sağlık kontrolü için `GET /api/health` uç noktası eklendi.
 * API dokümantasyonu Scalar ile `/api/swagger` adresinde yapılandırıldı.
 * API isteklerinin testi için Postman çalışma alanı ve koleksiyonu projeye dahil edildi.
+### Hafta 04: MVC Mimarisi, İkili Controller Yapısı ve Razor Views
+* **Dağıtılmış MVC (Distributed MVC) Mimarisi:** Clean Architecture katmanları MVC sorumluluklarıyla eşleştirildi ve dokümante edildi.
+* **Veritabanı Bağımsız User Modeli ve In-Memory CRUD:** `User` varlığı ile `UserStore` veri havuzu üzerinde thread-safe `GetAll`, `GetById`, `Add`, `Update`, `Patch`, `Delete` operasyonları kuruldu.
+* **İkili Controller Mimarisi:**
+  * `UserController`: `/users` (ve geriye dönük `/user`) rotası üzerinden Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ı oluşturuldu.
+  * `ApiUserController`: `/api/users` rotası üzerinden JSON tabanlı RESTful CRUD işlemlerini yürüten API controller'ı oluşturuldu.
+* **Razor View Katmanı (`Views/User`):**
+  * `Index.cshtml`: Kayıtlı kullanıcıların listesi ve yeni kullanıcı ekleme formu (`GET /users`, `POST /users`).
+  * `Details.cshtml`: Seçilen kullanıcının ayrıntılarını görüntüleme sayfası (`GET /users/details/{id}`).
+  * `Edit.cshtml`: Kullanıcı bilgilerini güncelleme formu (`GET /users/edit/{id}`, `POST /users/edit/{id}`).
+  * Kullanıcı silme iş akışı (`POST /users/delete/{id}`).
+* **Swagger / Scalar Dokümantasyonu:** `ApiUserController` rotaları `/api/swagger` üzerinde "Users" etiketiyle yapılandırıldı.
+
 

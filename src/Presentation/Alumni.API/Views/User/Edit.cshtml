@@ -23,7 +23,7 @@
     <div class="container">
         <h1>Kullanıcı Düzenle (ID: @Model.Id)</h1>
         
-        <form method="post" action="/user/edit/@Model.Id">
+        <form method="post" action="/users/edit/@Model.Id">
             <div class="form-group">
                 <label for="FirstName">Ad:</label>
                 <input type="text" id="FirstName" name="FirstName" value="@Model.FirstName" required />
@@ -43,7 +43,7 @@
             <button type="submit">Güncelle</button>
         </form>
 
-        <a href="/user" class="back-link">← Listeye Dön</a>
+        <a href="/users" class="back-link">← Listeye Dön</a>
     </div>
 </body>
 </html>
