@@ -18,6 +18,8 @@
 - [Zayıf Yönler ve Risk Analizi](#-zayıf-yönler-ve-risk-analizi)
 - [Geliştirme Metodolojisi](#-geliştirme-metodolojisi)
 - [Önerilen Sistem Mimarisi](#-önerilen-sistem-mimarisi)
+- [Proje Dizin Yapısı ve Dağıtılmış MVC Mimarisi](#-proje-dizin-yapısı-ve-dağıtılmış-mvc-mimarisi)
+- [Veritabanı ve Veri Tasarımı (Data Design)](#-veritabanı-ve-veri-tasarımı-data-design)
 - [Mevcut Uç Noktalar (Aktif Rotalar)](#-mevcut-uç-noktalar-aktif-rotalar)
 - [Kurulum ve Başlangıç](#-kurulum-ve-başlangıç)
 - [Geliştirme Süreci (Changelog)](#-geliştirme-süreci-changelog)
@@ -107,11 +109,11 @@ Projemiz tek bir projeye sıkıştırılmış basit bir MVC (Model-View-Controll
 Alumni/
 ├── src/
 │   ├── Core/
-│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - User.cs, Announcement.cs)
-│   │   └── Alumni.Application/      -> [MODEL] DTOs, In-Memory UserStore, IAnnouncementService & AnnouncementService
+│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - User.cs, AlumniProfile.cs, JobPost.cs, Announcement.cs)
+│   │   └── Alumni.Application/      -> [MODEL] DTOs, CRUD Servis Arayüzleri (IUserService, IAnnouncementService)
 │   ├── Infrastructure/
 │   │   ├── Alumni.Infrastructure/   -> [ALTYAPI] Dış servis entegrasyonları
-│   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı entegrasyonu (PostgreSQL vb.)
+│   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı (PostgreSQL, DbContext, Migrations, Seed & Factories, CRUD Servisleri)
 │   └── Presentation/
 │       └── Alumni.API/
 │           ├── Controllers/         -> [CONTROLLER] MVC (UserController, AnnouncementController) ve API (ApiUserController, ApiAnnouncementController)
@@ -122,13 +124,22 @@ Alumni/
 └── README.md
 ```
 
-- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`, `Announcement.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO), veritabanı bağlantısı olmaksızın çalışan in-memory veri havuzlarını (`UserStore.cs`) ve servis arayüzlerini (`IAnnouncementService`) yönetir.
+- **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`, `AlumniProfile.cs`, `JobPost.cs`, `Announcement.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO) ve CRUD servis arayüzlerini (`IUserService`, `IAnnouncementService`) yönetir. Veritabanı işlemleri `Alumni.Persistence` altındaki DbContext ve servisler üzerinden yürütülür.
 - **View (V):** İki farklı sunum katmanından oluşur:
   1. **Razor HTML Views (`Views/`):** Sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Views/User/`) ve duyuru yönetim arayüzleri (`Views/Announcement/`).
   2. **API & Dokümantasyon Arayüzü:** `/api/users` ve `/api/announcements` üzerinden dönülen JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
 - **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında hem MVC hem de API controller'ları ile yönetilir:
   1. `UserController` & `AnnouncementController`: Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ları (`/users`, `/announcements`).
   2. `ApiUserController` & `ApiAnnouncementController`: RESTful JSON API isteklerini yöneten API controller'ları (`/api/users`, `/api/announcements`).
+
+---
+
+## 📊 Veritabanı ve Veri Tasarımı (Data Design)
+
+Mezun Takip Sistemi'nin ilişkisel veri mimarisi, PostgreSQL 16 veritabanı motoru ve Entity Framework Core ORM altyapısı temel alınarak modellenmiştir. Sistemdeki tüm tablolar, varlık modelleri (Entities), kardinaliteler, kısıtlamalar, indeksler ve silme davranışları [DATA_DESIGN.md](./DATA_DESIGN.md) dokümanında detaylandırılmıştır.
+
+> 🤖 **AI / Antigravity Assistant Directive (Data Single Source of Truth):**
+> All entity models, DTOs, migrations, and database schema modifications MUST strictly reference and adhere to [DATA_DESIGN.md](./DATA_DESIGN.md). Whenever a database table, entity, property, or relationship is added, updated, or deleted in the codebase, the AI assistant MUST keep `DATA_DESIGN.md` synchronized and updated as the single source of truth.
 
 ---
 
@@ -173,13 +184,28 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 ---
 
 ## 🚀 Kurulum ve Başlangıç
-Projeyi yerel ortamda çalıştırmak için:
-1. Depoyu klonlayıp API projesinin dizinine gidin:
+
+### 1. Ortam Değişkenleri (Environment Variables)
+Proje kök dizinindeki şablon dosyayı kopyalayarak `.env` dosyasını oluşturun (`.env` hassas verileri korumak adına `.gitignore` ile korunmaktadır):
+```bash
+# Linux / macOS:
+cp .example.env .env
+
+# Windows PowerShell:
+Copy-Item .example.env .env
+```
+
+### 2. Yerel Ortamda Çalıştırma (.NET CLI)
+1. API projesinin dizinine gidin:
    `cd src/Presentation/Alumni.API`
 2. Uygulamayı başlatın:
    `dotnet run`
-3. Proje, nihai aşamada tüm veritabanı ve servisleriyle birlikte tek bir komutla ayağa kalkacak şekilde hedeflenmektedir:
-   `docker compose up`
+
+### 3. Docker Compose ile Çalıştırma
+Veritabanı (PostgreSQL 16) ve API servislerini tek bir komutla ayağa kaldırmak için kök dizinde çalıştırın:
+```bash
+docker compose up -d
+```
 
 ---
 
@@ -214,6 +240,16 @@ Projeyi yerel ortamda çalıştırmak için:
   * `AnnouncementController` (MVC - `/announcements`) ve `ApiAnnouncementController` (API - `/api/announcements`) controller'ları kuruldu.
   * `Views/Announcement` altında `Index.cshtml`, `Details.cshtml`, `Edit.cshtml` sayfaları ile tam CRUD arayüzü sağlandı.
   * Scalar/OpenAPI dokümantasyonuna "Announcements" grubu eklendi.
+### Hafta 05: Database & ORM — Veri Tasarımı ve Migrations
+* PostgreSQL 16 (`docker-compose` persistent volume: `postgres_data`) ve Entity Framework Core uyumlu veri mimarisi şartnamesi hazırlandı.
+* `Users`, `AlumniProfiles` (1-to-1) ve `JobPosts` (1-to-N) varlık modelleri, ilişkileri, kısıtları ve silme davranışları (Cascade / Set Null) [DATA_DESIGN.md](./DATA_DESIGN.md) dosyasında eksiksiz dokümante edildi.
+* Antigravity AI asistanı için veri modelini tek ve bağlayıcı kaynak (Single Source of Truth) kabul eden kural direktifi README.md ve DATA_DESIGN.md içerisine entegre edildi.
+* Güvenli ortam değişkenleri yönetimi için `.example.env` şablonu oluşturuldu; yerel geliştirme için `.env` dosyası hazırlanarak `.gitignore` ile korumaya alındı ve `docker-compose.yml` entegrasyonu sağlandı.
+* EF Core Code-First altyapısı `Alumni.Persistence` katmanında kuruldu; `InitialDataDesign` migration'ı oluşturularak PostgreSQL veritabanına uygulandı (`users`, `alumni_profiles`, `job_posts` ve `announcements` tabloları üretildi).
+* Varlık oluşturma süreçlerini standardize eden **Factory sınıfları** (`UserFactory`, `AlumniProfileFactory`, `JobPostFactory`, `AnnouncementFactory`) ve ilk açılışta veritabanını otomatik tohumlayan **Idempotent DatabaseSeeder** mimarisi entegre edildi.
+* CRUD servis arayüzleri (`IUserService`, `IAnnouncementService`) üzerinden in-memory yapılardan PostgreSQL veritabanı destekli servislere (`UserService`, `AnnouncementService`) geçiş yapıldı; MVC (`UserController`, `AnnouncementController`) ve REST API (`ApiUserController`, `ApiAnnouncementController`) controller'ları Dependency Injection ile veritabanına bağlandı.
+
+
 
 
 

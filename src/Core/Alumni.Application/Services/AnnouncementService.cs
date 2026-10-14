@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Alumni.Application.Interfaces;
 using Alumni.Domain.Entities;
 
@@ -36,12 +40,22 @@ namespace Alumni.Application.Services
             }
         }
 
+        public Task<List<Announcement>> GetAllAsync()
+        {
+            return Task.FromResult(GetAll());
+        }
+
         public Announcement? GetById(int id)
         {
             lock (_lock)
             {
                 return _announcements.FirstOrDefault(a => a.Id == id);
             }
+        }
+
+        public Task<Announcement?> GetByIdAsync(int id)
+        {
+            return Task.FromResult(GetById(id));
         }
 
         public Announcement Add(Announcement announcement)
@@ -53,6 +67,11 @@ namespace Alumni.Application.Services
                 _announcements.Add(announcement);
                 return announcement;
             }
+        }
+
+        public Task<Announcement> AddAsync(Announcement announcement)
+        {
+            return Task.FromResult(Add(announcement));
         }
 
         public bool Update(int id, string title, string content, string? author, bool isActive)
@@ -70,6 +89,11 @@ namespace Alumni.Application.Services
             }
         }
 
+        public Task<bool> UpdateAsync(int id, string title, string content, string? author, bool isActive)
+        {
+            return Task.FromResult(Update(id, title, content, author, isActive));
+        }
+
         public bool Delete(int id)
         {
             lock (_lock)
@@ -80,6 +104,11 @@ namespace Alumni.Application.Services
                 _announcements.Remove(item);
                 return true;
             }
+        }
+
+        public Task<bool> DeleteAsync(int id)
+        {
+            return Task.FromResult(Delete(id));
         }
     }
 }

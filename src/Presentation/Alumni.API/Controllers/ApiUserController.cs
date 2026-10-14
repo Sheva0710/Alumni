@@ -1,7 +1,6 @@
-using Alumni.Application;
 using Alumni.Application.DTOs.Users;
+using Alumni.Application.Interfaces;
 using Alumni.Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Alumni.API.Controllers
@@ -11,16 +10,23 @@ namespace Alumni.API.Controllers
     [Tags("Users")]
     public class ApiUserController : ControllerBase
     {
+        private readonly IUserService _userService;
+
+        public ApiUserController(IUserService userService)
+        {
+            _userService = userService;
+        }
+
         [HttpGet]
         public IActionResult GetAllUsers()
         {
-            return Ok(UserStore.GetAll());
+            return Ok(_userService.GetAll());
         }
 
         [HttpGet("{id}")]
         public IActionResult GetUser(int id)
         {
-            var user = UserStore.GetById(id);
+            var user = _userService.GetById(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
             return Ok(user);
         }
@@ -36,40 +42,39 @@ namespace Alumni.API.Controllers
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 Email = request.Email,
-                Role = request.Role ?? "User"
+                Role = request.Role ?? "Alumni"
             };
 
-            UserStore.Add(newUser);
+            _userService.Add(newUser);
             return Created($"/api/users/{newUser.Id}", newUser);
         }
 
         [HttpPut("{id}")]
         public IActionResult UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
-            var updated = UserStore.Update(id, request.FirstName, request.LastName, request.Email, request.Role);
+            var updated = _userService.Update(id, request.FirstName, request.LastName, request.Email, request.Role);
             if (!updated) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            return Ok(UserStore.GetById(id));
+            return Ok(_userService.GetById(id));
         }
 
         [HttpPatch("{id}")]
         public IActionResult PatchUser(int id, [FromBody] PatchUserRequest request)
         {
-            var user = UserStore.GetById(id);
+            var user = _userService.GetById(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            UserStore.Patch(id, request.FirstName, request.LastName, request.Email, request.Role);
-            return Ok(UserStore.GetById(id));
+            _userService.Patch(id, request.FirstName, request.LastName, request.Email, request.Role);
+            return Ok(_userService.GetById(id));
         }
 
         [HttpDelete("{id}")]
         public IActionResult DeleteUser(int id)
         {
-            var deleted = UserStore.Delete(id);
+            var deleted = _userService.Delete(id);
             if (!deleted) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
             return NoContent();
         }
     }
 }
-

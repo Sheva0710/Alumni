@@ -3,10 +3,14 @@ namespace Alumni.Domain.Entities
     public class User
     {
         public int Id { get; set; }
-        public string? FirstName { get; set; }
-        public string? LastName { get; set; }
-        public string? Email { get; set; }
-        public string? Role { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = "Alumni";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation Properties (DATA_DESIGN.md)
+        public AlumniProfile? Profile { get; set; }
+        public ICollection<JobPost> JobPosts { get; set; } = new List<JobPost>();
     }
 }

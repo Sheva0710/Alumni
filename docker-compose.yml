@@ -1,27 +1,70 @@
-version: '3.8'
+# ==============================================================================
+# Alumni Tracking System - Multi-Container Orchestration (Docker Compose)
+# Altyapı Referansı: DATA_DESIGN.md & README.md (PostgreSQL 16 & EF Core)
+# Ortam Değişkenleri: .env (veya .example.env şablonu)
+# ==============================================================================
 
 services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 Veritabanı Servisi (alumni-db)
+  # DATA_DESIGN.md Bölüm 1.1 doğrultusunda yapılandırılmıştır.
+  # ----------------------------------------------------------------------------
+  alumni-db:
+    image: postgres:16-alpine
+    container_name: alumni-db
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-alumnidb}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-alumnidb}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - alumni-network
+
+  # ----------------------------------------------------------------------------
+  # 2. ASP.NET Core API Servisi (alumni-api)
+  # Clean Architecture katmanlı mimarisi ve EF Core PostgreSQL bağlantısı
+  # ----------------------------------------------------------------------------
   alumni-api:
     build:
       context: .
       dockerfile: src/Presentation/Alumni.API/Dockerfile
+    container_name: alumni-api
+    restart: unless-stopped
     ports:
-      - "5273:8080"
+      - "${API_PORT:-5273}:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=${DB_HOST:-alumni-db};Port=${DB_PORT:-5432};Database=${POSTGRES_DB:-alumnidb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres};
     depends_on:
-      - alumni-db
+      alumni-db:
+        condition: service_healthy
+    networks:
+      - alumni-network
 
-  alumni-db:
-    image: postgres:16-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=alumnidb
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+# ------------------------------------------------------------------------------
+# Kalıcı Veri Depolama (Named Volumes)
+# DATA_DESIGN.md standardı: postgres_data kalıcı PostgreSQL veri dizini
+# ------------------------------------------------------------------------------
 volumes:
   postgres_data:
+    driver: local
+
+# ------------------------------------------------------------------------------
+# İzole Ağ Yapılandırması (Bridge Network)
+# Servisler arası güvenli ve adlandırılmış DNS iletişimi
+# ------------------------------------------------------------------------------
+networks:
+  alumni-network:
+    driver: bridge

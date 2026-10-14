@@ -1,5 +1,8 @@
 using Alumni.Application.Interfaces;
 using Alumni.Application.Services;
+using Alumni.Persistence;
+using Alumni.Persistence.Data;
+using Alumni.Persistence.Seed;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,12 +10,28 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddSingleton<IAnnouncementService, AnnouncementService>();
+builder.Services.AddPersistenceServices(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
+
+// Otomatik Veritabanı Tohumlama (Factory & DatabaseSeeder)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var context = services.GetRequiredService<AlumniDbContext>();
+        await DatabaseSeeder.SeedAsync(context, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Veritabanı seed işlemi sırasında bir hata meydana geldi.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
