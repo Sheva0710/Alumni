@@ -18,24 +18,25 @@ namespace Alumni.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View(_userService.GetAll());
+            var users = await _userService.GetAllAsync();
+            return View(users);
         }
 
         [HttpGet("details/{id}")]
-        public IActionResult Details(int id)
+        public async Task<IActionResult> Details(int id)
         {
-            var user = _userService.GetById(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound();
 
             return View(user);
         }
 
         [HttpGet("edit/{id}")]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            var user = _userService.GetById(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound();
 
             return View(user);
@@ -43,7 +44,7 @@ namespace Alumni.API.Controllers
 
         [HttpPost]
         [HttpPost("create")]
-        public IActionResult Create([FromForm] CreateUserRequest request)
+        public async Task<IActionResult> Create([FromForm] CreateUserRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Ad ve e-posta zorunludur.");
@@ -51,28 +52,28 @@ namespace Alumni.API.Controllers
             var newUser = new User
             {
                 FirstName = request.FirstName,
-                LastName = request.LastName,
+                LastName = request.LastName ?? string.Empty,
                 Email = request.Email,
                 Role = request.Role ?? "Alumni"
             };
 
-            _userService.Add(newUser);
+            await _userService.AddAsync(newUser);
             return Redirect("/users");
         }
 
         [HttpPost("edit/{id}")]
-        public IActionResult Edit(int id, [FromForm] UpdateUserRequest request)
+        public async Task<IActionResult> Edit(int id, [FromForm] UpdateUserRequest request)
         {
-            var updated = _userService.Update(id, request.FirstName, request.LastName, request.Email, request.Role);
+            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
             if (!updated) return NotFound();
 
             return Redirect("/users");
         }
 
         [HttpPost("delete/{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var deleted = _userService.Delete(id);
+            var deleted = await _userService.DeleteAsync(id);
             if (!deleted) return NotFound();
 
             return Redirect("/users");

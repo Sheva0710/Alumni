@@ -1,7 +1,6 @@
 using Alumni.Application.DTOs.Announcements;
 using Alumni.Application.Interfaces;
 using Alumni.Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Alumni.API.Controllers
@@ -19,25 +18,25 @@ namespace Alumni.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var announcements = _announcementService.GetAll();
+            var announcements = await _announcementService.GetAllAsync();
             return View(announcements);
         }
 
         [HttpGet("details/{id}")]
-        public IActionResult Details(int id)
+        public async Task<IActionResult> Details(int id)
         {
-            var announcement = _announcementService.GetById(id);
+            var announcement = await _announcementService.GetByIdAsync(id);
             if (announcement == null) return NotFound();
 
             return View(announcement);
         }
 
         [HttpGet("edit/{id}")]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            var announcement = _announcementService.GetById(id);
+            var announcement = await _announcementService.GetByIdAsync(id);
             if (announcement == null) return NotFound();
 
             return View(announcement);
@@ -45,7 +44,7 @@ namespace Alumni.API.Controllers
 
         [HttpPost]
         [HttpPost("create")]
-        public IActionResult Create([FromForm] CreateAnnouncementRequest request)
+        public async Task<IActionResult> Create([FromForm] CreateAnnouncementRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
                 return BadRequest("Başlık ve içerik zorunludur.");
@@ -57,23 +56,23 @@ namespace Alumni.API.Controllers
                 Author = string.IsNullOrWhiteSpace(request.Author) ? "Kariyer Merkezi" : request.Author
             };
 
-            _announcementService.Add(newAnnouncement);
+            await _announcementService.AddAsync(newAnnouncement);
             return Redirect("/announcements");
         }
 
         [HttpPost("edit/{id}")]
-        public IActionResult Edit(int id, [FromForm] UpdateAnnouncementRequest request)
+        public async Task<IActionResult> Edit(int id, [FromForm] UpdateAnnouncementRequest request)
         {
-            var updated = _announcementService.Update(id, request.Title, request.Content, request.Author, request.IsActive);
+            var updated = await _announcementService.UpdateAsync(id, request.Title, request.Content, request.Author, request.IsActive);
             if (!updated) return NotFound();
 
             return Redirect("/announcements");
         }
 
         [HttpPost("delete/{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var deleted = _announcementService.Delete(id);
+            var deleted = await _announcementService.DeleteAsync(id);
             if (!deleted) return NotFound();
 
             return Redirect("/announcements");

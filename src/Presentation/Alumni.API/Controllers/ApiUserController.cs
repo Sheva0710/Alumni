@@ -18,21 +18,22 @@ namespace Alumni.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAllUsers()
+        public async Task<IActionResult> GetAllUsers()
         {
-            return Ok(_userService.GetAll());
+            var users = await _userService.GetAllAsync();
+            return Ok(users);
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetUser(int id)
+        public async Task<IActionResult> GetUser(int id)
         {
-            var user = _userService.GetById(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
             return Ok(user);
         }
 
         [HttpPost]
-        public IActionResult CreateUser([FromBody] CreateUserRequest request)
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Ad ve e-posta zorunludur.");
@@ -40,38 +41,38 @@ namespace Alumni.API.Controllers
             var newUser = new User
             {
                 FirstName = request.FirstName,
-                LastName = request.LastName,
+                LastName = request.LastName ?? string.Empty,
                 Email = request.Email,
                 Role = request.Role ?? "Alumni"
             };
 
-            _userService.Add(newUser);
+            await _userService.AddAsync(newUser);
             return Created($"/api/users/{newUser.Id}", newUser);
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateUser(int id, [FromBody] UpdateUserRequest request)
+        public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
-            var updated = _userService.Update(id, request.FirstName, request.LastName, request.Email, request.Role);
+            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
             if (!updated) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            return Ok(_userService.GetById(id));
+            return Ok(await _userService.GetByIdAsync(id));
         }
 
         [HttpPatch("{id}")]
-        public IActionResult PatchUser(int id, [FromBody] PatchUserRequest request)
+        public async Task<IActionResult> PatchUser(int id, [FromBody] PatchUserRequest request)
         {
-            var user = _userService.GetById(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            _userService.Patch(id, request.FirstName, request.LastName, request.Email, request.Role);
-            return Ok(_userService.GetById(id));
+            await _userService.PatchAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
+            return Ok(await _userService.GetByIdAsync(id));
         }
 
         [HttpDelete("{id}")]
-        public IActionResult DeleteUser(int id)
+        public async Task<IActionResult> DeleteUser(int id)
         {
-            var deleted = _userService.Delete(id);
+            var deleted = await _userService.DeleteAsync(id);
             if (!deleted) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
             return NoContent();

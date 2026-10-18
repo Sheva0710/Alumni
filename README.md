@@ -178,7 +178,8 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/api/announcements` | Tüm Duyuruları Listeleme (JSON API) |
 | `GET` | `/api/announcements/{id}` | ID'ye Göre Tekil Duyuru Getirme (JSON API) |
 | `POST` | `/api/announcements` | Yeni Duyuru Ekleme (JSON API) |
-| `PUT` | `/api/announcements/{id}` | Duyuru Güncelleme (JSON API) |
+| `PUT` | `/api/announcements/{id}` | Duyuru Tam Güncelleme (JSON API) |
+| `PATCH`| `/api/announcements/{id}` | Duyuru Kısmi Güncelleme (JSON API) |
 | `DELETE`| `/api/announcements/{id}` | Duyuru Silme (JSON API) |
 
 ---

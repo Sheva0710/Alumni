@@ -21,13 +21,6 @@ namespace Alumni.Persistence.Services
             _context = context;
         }
 
-        public List<Announcement> GetAll()
-        {
-            return _context.Announcements
-                .OrderByDescending(a => a.CreatedAt)
-                .ToList();
-        }
-
         public async Task<List<Announcement>> GetAllAsync()
         {
             return await _context.Announcements
@@ -35,22 +28,9 @@ namespace Alumni.Persistence.Services
                 .ToListAsync();
         }
 
-        public Announcement? GetById(int id)
-        {
-            return _context.Announcements.FirstOrDefault(a => a.Id == id);
-        }
-
         public async Task<Announcement?> GetByIdAsync(int id)
         {
             return await _context.Announcements.FirstOrDefaultAsync(a => a.Id == id);
-        }
-
-        public Announcement Add(Announcement announcement)
-        {
-            announcement.CreatedAt = announcement.CreatedAt == default ? DateTime.UtcNow : announcement.CreatedAt;
-            _context.Announcements.Add(announcement);
-            _context.SaveChanges();
-            return announcement;
         }
 
         public async Task<Announcement> AddAsync(Announcement announcement)
@@ -59,20 +39,6 @@ namespace Alumni.Persistence.Services
             await _context.Announcements.AddAsync(announcement);
             await _context.SaveChangesAsync();
             return announcement;
-        }
-
-        public bool Update(int id, string title, string content, string? author, bool isActive)
-        {
-            var item = _context.Announcements.FirstOrDefault(a => a.Id == id);
-            if (item == null) return false;
-
-            item.Title = title;
-            item.Content = content;
-            if (!string.IsNullOrWhiteSpace(author)) item.Author = author;
-            item.IsActive = isActive;
-
-            _context.SaveChanges();
-            return true;
         }
 
         public async Task<bool> UpdateAsync(int id, string title, string content, string? author, bool isActive)
@@ -89,13 +55,17 @@ namespace Alumni.Persistence.Services
             return true;
         }
 
-        public bool Delete(int id)
+        public async Task<bool> PatchAsync(int id, string? title, string? content, string? author, bool? isActive)
         {
-            var item = _context.Announcements.FirstOrDefault(a => a.Id == id);
+            var item = await _context.Announcements.FirstOrDefaultAsync(a => a.Id == id);
             if (item == null) return false;
 
-            _context.Announcements.Remove(item);
-            _context.SaveChanges();
+            if (!string.IsNullOrWhiteSpace(title)) item.Title = title;
+            if (!string.IsNullOrWhiteSpace(content)) item.Content = content;
+            if (!string.IsNullOrWhiteSpace(author)) item.Author = author;
+            if (isActive.HasValue) item.IsActive = isActive.Value;
+
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -110,3 +80,4 @@ namespace Alumni.Persistence.Services
         }
     }
 }
+

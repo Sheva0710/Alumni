@@ -1,7 +1,6 @@
 using Alumni.Application.DTOs.Announcements;
 using Alumni.Application.Interfaces;
 using Alumni.Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Alumni.API.Controllers
@@ -19,15 +18,16 @@ namespace Alumni.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            return Ok(_announcementService.GetAll());
+            var announcements = await _announcementService.GetAllAsync();
+            return Ok(announcements);
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById(int id)
+        public async Task<IActionResult> GetById(int id)
         {
-            var announcement = _announcementService.GetById(id);
+            var announcement = await _announcementService.GetByIdAsync(id);
             if (announcement == null)
                 return NotFound(new { message = $"ID {id} olan duyuru bulunamadı." });
 
@@ -35,7 +35,7 @@ namespace Alumni.API.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] CreateAnnouncementRequest request)
+        public async Task<IActionResult> Create([FromBody] CreateAnnouncementRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
                 return BadRequest("Başlık ve içerik zorunludur.");
@@ -47,27 +47,41 @@ namespace Alumni.API.Controllers
                 Author = string.IsNullOrWhiteSpace(request.Author) ? "Kariyer Merkezi" : request.Author
             };
 
-            var created = _announcementService.Add(newAnnouncement);
+            var created = await _announcementService.AddAsync(newAnnouncement);
             return Created($"/api/announcements/{created.Id}", created);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Update(int id, [FromBody] UpdateAnnouncementRequest request)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateAnnouncementRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
                 return BadRequest("Başlık ve içerik zorunludur.");
 
-            var updated = _announcementService.Update(id, request.Title, request.Content, request.Author, request.IsActive);
+            var updated = await _announcementService.UpdateAsync(id, request.Title, request.Content, request.Author, request.IsActive);
             if (!updated)
                 return NotFound(new { message = $"ID {id} olan duyuru bulunamadı." });
 
-            return Ok(_announcementService.GetById(id));
+            return Ok(await _announcementService.GetByIdAsync(id));
+        }
+
+        [HttpPatch("{id}")]
+        public async Task<IActionResult> Patch(int id, [FromBody] PatchAnnouncementRequest request)
+        {
+            var announcement = await _announcementService.GetByIdAsync(id);
+            if (announcement == null)
+                return NotFound(new { message = $"ID {id} olan duyuru bulunamadı." });
+
+            var updated = await _announcementService.PatchAsync(id, request.Title, request.Content, request.Author, request.IsActive);
+            if (!updated)
+                return NotFound(new { message = $"ID {id} olan duyuru bulunamadı." });
+
+            return Ok(await _announcementService.GetByIdAsync(id));
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var deleted = _announcementService.Delete(id);
+            var deleted = await _announcementService.DeleteAsync(id);
             if (!deleted)
                 return NotFound(new { message = $"ID {id} olan duyuru bulunamadı." });
 
