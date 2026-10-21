@@ -10,7 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddPersistenceServices(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -80,15 +84,8 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("Veritabanı tabloları kontrol ediliyor ve migration uygulanıyor...");
         context.Database.Migrate();
 
-        if (!context.Users.Any())
-        {
-            logger.LogInformation("Veritabanında kayıtlı kullanıcı bulunamadı. Başlangıç verileri (Ahmet, Ayşe vb.) tohumlanıyor...");
-            await DatabaseSeeder.SeedAsync(context, logger);
-        }
-        else
-        {
-            logger.LogInformation("Veritabanında mevcut kullanıcılar bulundu. Tohumlama (seed) atlandı.");
-        }
+        logger.LogInformation("Veritabanı migration ve tohumlama (Seed) kontrolleri yapılıyor...");
+        await DatabaseSeeder.SeedAsync(context, logger);
     }
     catch (Exception ex)
     {

@@ -20,6 +20,12 @@ namespace Alumni.Persistence.Configurations
             builder.HasIndex(j => j.PostedByUserId).HasDatabaseName("ix_job_posts_posted_by_user_id");
 
             builder.Property(j => j.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // 1-to-N Relationship with Applications (Cascade Delete)
+            builder.HasMany(j => j.Applications)
+                   .WithOne(a => a.JobPost)
+                   .HasForeignKey(a => a.JobPostId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -1,0 +1,145 @@
+@model List<Alumni.Domain.Entities.JobPost>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İş ve Staj İlanları — Alumni Tracking System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #1f2937; margin: 0; }
+        .container { max-width: 1050px; margin: auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2rem; }
+        h1 { color: #4F46E5; margin: 0; }
+        .nav-links a { margin-left: 1rem; color: #4F46E5; text-decoration: none; font-weight: 600; }
+        .nav-links a:hover { text-decoration: underline; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; }
+        .alert-success { background-color: #DEF7EC; color: #03543F; border: 1px solid #BCF0DA; }
+        .alert-error { background-color: #FDE8E8; color: #9B1C1C; border: 1px solid #FBD5D5; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; }
+        th, td { text-align: left; padding: 14px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f3f4f6; color: #4b5563; font-weight: 600; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; background-color: #EEF2FF; color: #4F46E5; }
+        .btn { display: inline-block; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; transition: background-color 0.2s; }
+        .btn-primary { background-color: #4F46E5; color: white; }
+        .btn-primary:hover { background-color: #4338CA; }
+        .btn-danger { background-color: #EF4444; color: white; }
+        .btn-danger:hover { background-color: #DC2626; }
+        .btn-secondary { background-color: #F3F4F6; color: #374151; }
+        .btn-secondary:hover { background-color: #E5E7EB; }
+        .form-card { background-color: #F9FAFB; padding: 2rem; border-radius: 8px; border: 1px solid #E5E7EB; margin-top: 2rem; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group.full-width { grid-column: span 2; }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151; }
+        input[type="text"], select, textarea { width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>💼 İş ve Staj İlanları</h1>
+                <p style="color: #6B7280; margin: 0.25rem 0 0 0;">Mezunlar ve işverenler tarafından paylaşılan kariyer fırsatları</p>
+            </div>
+            <div class="nav-links">
+                <a href="/">🏠 Ana Sayfa</a>
+                <a href="/users">👥 Kullanıcılar</a>
+                <a href="/applications">📋 Başvurular</a>
+                <a href="/api/swagger" target="_blank">⚡ Swagger API</a>
+            </div>
+        </div>
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success">✅ @TempData["SuccessMessage"]</div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-error">⚠️ @TempData["ErrorMessage"]</div>
+        }
+
+        <h2>Yayındaki İş İlanları (@Model.Count)</h2>
+        @if (Model.Count == 0)
+        {
+            <p style="color: #6B7280; font-style: italic;">Henüz sisteme eklenmiş bir iş ilanı bulunmamaktadır.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pozisyon / Başlık</th>
+                        <th>Şirket</th>
+                        <th>İlan Sahibi</th>
+                        <th>Yayınlanma</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model)
+                    {
+                        <tr>
+                            <td><strong>#@job.Id</strong></td>
+                            <td>
+                                <a href="/jobs/details/@job.Id" style="color: #4F46E5; font-weight: 600; text-decoration: none;">@job.Title</a>
+                            </td>
+                            <td><span class="badge">@job.Company</span></td>
+                            <td>
+                                <a href="/users/details/@job.PostedByUserId" style="color: #374151; text-decoration: underline;">Kullanıcı #@job.PostedByUserId</a>
+                            </td>
+                            <td>@job.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>
+                                <a href="/jobs/details/@job.Id" class="btn btn-secondary" style="margin-right: 5px;">Detay & Başvur</a>
+                                <form action="/jobs/delete/@job.Id" method="post" style="display:inline;" onsubmit="return confirm('Bu ilanı silmek istediğinize emin misiniz? Bağlı tüm başvurular da Cascade kuralı ile silinecektir.');">
+                                    <button type="submit" class="btn btn-danger">Sil</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="form-card">
+            <h3 style="margin-top: 0; color: #4F46E5;">➕ Yeni İş İlanı Yayınla</h3>
+            <form action="/jobs/create" method="post">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="postedByUserId">İlan Sahibi (Kullanıcı Seçiniz):</label>
+                        <select name="postedByUserId" id="postedByUserId" required>
+                            <option value="">-- Kullanıcı Seçin --</option>
+                            @if (ViewBag.Users != null)
+                            {
+                                foreach (var user in (List<Alumni.Domain.Entities.User>)ViewBag.Users)
+                                {
+                                    <option value="@user.Id">@user.FirstName @user.LastName (@user.Role - @user.Email)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="company">Firma / Kurum Adı:</label>
+                        <input type="text" id="company" name="company" placeholder="Örn: Google, Acme, ASELSAN" required />
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="title">İlan Başlığı / Pozisyon:</label>
+                        <input type="text" id="title" name="title" placeholder="Örn: Junior .NET Backend Developer" required />
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="description">İlan Açıklaması ve Aranan Şartlar:</label>
+                        <textarea id="description" name="description" placeholder="Adaylarda aranan kriterler, yetenekler ve çalışma şartları..." required></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">İlanı Yayınla</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

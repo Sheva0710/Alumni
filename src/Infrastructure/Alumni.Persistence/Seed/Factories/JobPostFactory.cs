@@ -19,11 +19,48 @@ namespace Alumni.Persistence.Seed.Factories
         {
             return new JobPost
             {
-                Title = title,
-                Company = company,
-                Description = description,
+                Title = title.Trim(),
+                Company = company.Trim(),
+                Description = description.Trim(),
                 PostedByUserId = postedByUserId,
                 CreatedAt = createdAt ?? DateTime.UtcNow
+            };
+        }
+
+        /// <summary>
+        /// 6. Hafta ders notları (Plate 06 & Şartname) senaryosuna uygun iş ilanları listesi üretir:
+        /// - Belirli bir kullanıcıya birden fazla ilan (one-to-many: Backend Intern, Data Analyst, Junior Developer)
+        /// - İkinci bir kullanıcıya ilan (QA Tester)
+        /// - Diğer kullanıcıların ilanı olmaz (böylece GET /api/users/{id} çağrısında jobs: [] boş dizi testi yapılabilir).
+        /// </summary>
+        public static List<JobPost> CreateWeek06JobPosts(int primaryUserId, int secondaryUserId)
+        {
+            return new List<JobPost>
+            {
+                Create(
+                    title: "Backend Intern",
+                    company: "Acme",
+                    description: "RESTful API geliştirme, PostgreSQL veritabanı ve C# ASP.NET Core bilgisine sahip stajyer.",
+                    postedByUserId: primaryUserId
+                ),
+                Create(
+                    title: "Data Analyst",
+                    company: "DataCorp",
+                    description: "SQL sorguları, raporlama ve veri modelleme konularında mezun takım arkadaşı.",
+                    postedByUserId: primaryUserId
+                ),
+                Create(
+                    title: "Junior Developer",
+                    company: "Acme",
+                    description: "Backend ve API tasarımı alanında tam zamanlı başlangıç pozisyonu.",
+                    postedByUserId: primaryUserId
+                ),
+                Create(
+                    title: "QA Tester",
+                    company: "TestLab",
+                    description: "API testleri (Postman, Swagger), uç nokta ve entegrasyon testlerinde deneyimli adaylar.",
+                    postedByUserId: secondaryUserId
+                )
             };
         }
 

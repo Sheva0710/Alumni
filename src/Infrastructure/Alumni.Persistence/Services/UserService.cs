@@ -66,12 +66,24 @@ namespace Alumni.Persistence.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
+            var result = await DeleteUserWithRuleAsync(id);
+            return result == DeleteUserResult.Success;
+        }
+
+        public async Task<DeleteUserResult> DeleteUserWithRuleAsync(int id)
+        {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return false;
+            if (user == null) return DeleteUserResult.NotFound;
+
+            var hasJobPosts = await _context.JobPosts.AnyAsync(j => j.PostedByUserId == id);
+            if (hasJobPosts)
+            {
+                return DeleteUserResult.HasJobPosts;
+            }
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync();
-            return true;
+            return DeleteUserResult.Success;
         }
     }
 }

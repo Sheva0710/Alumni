@@ -169,12 +169,34 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/announcements/edit/{id}` | Duyuru Düzenleme Formu (MVC View) |
 | `POST` | `/announcements/edit/{id}` | Duyuru Güncelleme (MVC Form POST) |
 | `POST` | `/announcements/delete/{id}` | Duyuru Silme (MVC Form POST) |
+| `GET` | `/jobs` | İş ve Staj İlanları Listeleme & Ekleme Formu (MVC Razor View) |
+| `POST` | `/jobs/create` | Yeni İş İlanı Ekleme (MVC Form POST) |
+| `GET` | `/jobs/details/{id}` | İlan Detayı, Başvuru Formu ve Başvuranlar Listesi (MVC View) |
+| `POST` | `/jobs/{id}/apply` | İlana Başvuru Yapma (MVC Form POST) |
+| `POST` | `/jobs/delete/{id}` | İş İlanı Silme (Cascade - MVC Form POST) |
+| `GET` | `/applications` | Tüm Başvuruları Listeleme & Durum Yönetimi (MVC Razor View) |
+| `POST` | `/applications/create` | Doğrudan Başvuru Ekleme (MVC Form POST) |
+| `POST` | `/applications/{id}/status` | Başvuru Statüsü Güncelleme (MVC Form POST) |
+| `POST` | `/applications/delete/{id}` | Başvuru İptal Etme / Silme (MVC Form POST) |
 | `GET` | `/api/users` | Tüm Kullanıcıları Listeleme (JSON API) |
-| `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı Getirme (JSON API) |
+| `GET` | `/api/users/{id}` | ID'ye Göre Tekil Kullanıcı & İlanları (Include / LEFT JOIN - JSON API) |
 | `POST` | `/api/users` | Yeni Kullanıcı Ekleme (JSON API) |
 | `PUT` | `/api/users/{id}` | Kullanıcı Tam Güncelleme (JSON API) |
 | `PATCH`| `/api/users/{id}` | Kullanıcı Kısmi Güncelleme (JSON API) |
-| `DELETE`| `/api/users/{id}`| Kullanıcı Silme (JSON API) |
+| `DELETE`| `/api/users/{id}`| Kullanıcı Silme (Restrict Kuralı - Aktif ilanı varsa 409 Conflict) |
+| `POST` | `/api/users/{id}/jobs` | Kullanıcı Adına İlan Açma (Nested Route - JSON API) |
+| `GET` | `/api/users/{id}/jobs` | Kullanıcının Açtığı İlanları Listeleme (Nested Route - JSON API) |
+| `GET` | `/api/users/{id}/applications` | Kullanıcının Başvurduğu İlanları Listeleme (Nested Route - JSON API) |
+| `GET` | `/api/jobs` | Tüm İş İlanlarını Listeleme (JSON API) |
+| `GET` | `/api/jobs/{id}` | Tekil İş İlanı Detayı (JSON API) |
+| `DELETE`| `/api/jobs/{id}` | İş İlanı Silme (Cascade Delete - JSON API) |
+| `POST` | `/api/jobs/{id}/applications` | İlana Başvuru Yapma (Unique Pair / Nested Route - JSON API) |
+| `GET` | `/api/jobs/{id}/applications` | Bir İlana Başvuran Adayların Listesi (Nested Route - JSON API) |
+| `GET` | `/api/applications` | Tüm Başvuruları Listeleme (JSON API) |
+| `GET` | `/api/applications/{id}` | Tekil Başvuru Detayı (JSON API) |
+| `POST` | `/api/applications` | Doğrudan Başvuru Kaydı (JSON API) |
+| `PATCH`| `/api/applications/{id}/status` | Başvuru Durumunu Güncelleme (JSON API) |
+| `DELETE`| `/api/applications/{id}` | Başvuru İptal Etme / Silme (JSON API) |
 | `GET` | `/api/announcements` | Tüm Duyuruları Listeleme (JSON API) |
 | `GET` | `/api/announcements/{id}` | ID'ye Göre Tekil Duyuru Getirme (JSON API) |
 | `POST` | `/api/announcements` | Yeni Duyuru Ekleme (JSON API) |
@@ -199,14 +221,17 @@ Copy-Item .example.env .env
 ### 2. Yerel Ortamda Çalıştırma (.NET CLI)
 1. API projesinin dizinine gidin:
    `cd src/Presentation/Alumni.API`
-2. Uygulamayı başlatın:
+2. Uygulamayı başlatın (Migration ve seed verileri otomatik uygulanır):
    `dotnet run`
 
 ### 3. Docker Compose ile Çalıştırma
-Veritabanı (PostgreSQL 16) ve API servislerini tek bir komutla ayağa kaldırmak için kök dizinde çalıştırın:
+Veritabanı (PostgreSQL 16) ve adlandırılmış kalıcı volume (`postgres_data`) ile sistemi tek komutla ayağa kaldırmak için kök dizinde çalıştırın:
 ```bash
 docker compose up -d
 ```
+> **Volume Yönetimi:**
+> * `docker compose down`: Konteynerleri durdurur, veriler adlandırılmış volume (`postgres_data`) içinde korunur.
+> * `docker compose down -v`: Volume dahil tüm tabloları ve verileri sıfırlar.
 
 ---
 
@@ -249,6 +274,29 @@ docker compose up -d
 * EF Core Code-First altyapısı `Alumni.Persistence` katmanında kuruldu; `InitialDataDesign` migration'ı oluşturularak PostgreSQL veritabanına uygulandı (`users`, `alumni_profiles`, `job_posts` ve `announcements` tabloları üretildi).
 * Varlık oluşturma süreçlerini standardize eden **Factory sınıfları** (`UserFactory`, `AlumniProfileFactory`, `JobPostFactory`, `AnnouncementFactory`) ve ilk açılışta veritabanını otomatik tohumlayan **Idempotent DatabaseSeeder** mimarisi entegre edildi.
 * CRUD servis arayüzleri (`IUserService`, `IAnnouncementService`) üzerinden in-memory yapılardan PostgreSQL veritabanı destekli servislere (`UserService`, `AnnouncementService`) geçiş yapıldı; MVC (`UserController`, `AnnouncementController`) ve REST API (`ApiUserController`, `ApiAnnouncementController`) controller'ları Dependency Injection ile veritabanına bağlandı.
+### Hafta 06: İlişkisel Veri, İleri Seviye Yönlendirme (Nested Routes) ve İş İlanları & Başvurular UI (Ödev)
+* **İlişkisel Veri Mimarisi ve Join Table:**
+  * [DATA_DESIGN.md](./DATA_DESIGN.md) şartnamesi `job_posts` (1-to-N) ve `applications` (kullanıcılar ile ilanlar arasında Many-to-Many çözümleyici ara tablo) modelleriyle güncellendi.
+  * **Tekil Çift Kuralı (Unique Pair):** `applications` tablosunda `UNIQUE (user_id, job_post_id)` kısıtı kurularak aynı kullanıcının bir ilana yalnızca bir kez başvurabilmesi sağlandı (`409 Conflict`).
+  * **Silme Kuralı Kararı (Delete Rule):** İlanı olan kullanıcıların doğrudan silinmesini engelleyen ve veri bütünlüğünü koruyan **`Restrict`** kuralı seçildi (kullanıcı silinmek istendiğinde `409 Conflict` döner). İlan silindiğinde ise bağlı başvurular `Cascade` ile temizlenir.
+* **Yeni Migration:**
+  * Eski migration dosyalarına dokunulmadan `20261021063930_AddApplicationsAndJobPostingRelations.cs` migration dosyası üretildi.
+* **Model, Fabrika ve Sıralı Tohumlama (Seed):**
+  * `Application` domain varlığı, Fluent API konfigürasyonu, `JobPostFactory` ve `ApplicationFactory` sınıfları oluşturuldu.
+  * Tabloları ters bağımlılık sırasıyla (`applications` → `job_posts` → `alumni_profiles` → `users` → `announcements`) temizleyip PostgreSQL kimlik sayaçlarını sıfırlayan (`RESTART IDENTITY CASCADE`) ve çifte çalıştırmayı (`run twice`) destekleyen `DatabaseSeeder.ResetAndSeedAsync` altyapısı geliştirildi.
+* **Gelişmiş ve İç İçe Yönlendirmeler (Advanced & Nested Routes):**
+  * `POST /api/users/{id}/jobs`: İlan sahibinin ID'si URL parametresinden alınır; kullanıcı yoksa 404, başarılıysa 201 Created döner.
+  * `GET /api/users/{id}/jobs`: Kullanıcının açtığı iş ilanlarını listeler (Nested route).
+  * `GET /api/users/{id}`: `Include(u => u.JobPosts)` ile Eager Loading yapılarak kullanıcı detayı ve açtığı ilanlar (`jobs: [...]`) tek yanıtta (`LEFT JOIN` mantığıyla) döner.
+  * `POST /api/jobs/{id}/applications`: İlana başvuru oluşturur (`201 Created`, mükerrer başvuruda `409 Conflict`, kayıt yoksa `404 Not Found`).
+  * `GET /api/jobs/{id}/applications`: Bir ilana başvuran tüm adayların listesi (`ApplicantDto`).
+  * `GET /api/users/{id}/applications`: Kullanıcının başvurduğu tüm iş ilanlarının listesi (`UserApplicationDto`).
+  * Doğrudan `/api/jobs` ve `/api/applications` CRUD rotaları tamamlandı.
+* **Hafta 06 Ödevi ("Prepare basic UIs for job posting and applications"):**
+  * **İş İlanları Yönetimi Arayüzü (`/jobs`):** `JobPostController` ve `Views/JobPost/Index.cshtml`, `Views/JobPost/Details.cshtml` sayfaları geliştirildi. İlanları listeleme, ilan oluşturma formu, ilan detayı ve o ilana başvuran adayların listesi sağlandı.
+  * **İş Başvuruları Yönetimi Arayüzü (`/applications`):** `ApplicationController` ve `Views/Application/Index.cshtml` geliştirildi. Tüm başvuruların statüleriyle (Applied, Reviewing, Interview, Accepted, Rejected) görüntülenmesi, durum güncelleme ve başvuru iptal formu sunuldu.
+  * **Kullanıcı Detay Sayfası (`/users/details/{id}`):** Sayfa güncellenerek seçilen kullanıcının yayınladığı tüm iş ilanları (`Model.JobPosts`) listelendi (Ders notları Madde 8 şartı).
+  * Ana sayfa (`/`) başlığına modüller arası hızlı geçiş sağlayan gezinme çubuğu (Navigation bar) eklendi.
 
 
 

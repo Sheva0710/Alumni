@@ -27,10 +27,16 @@ namespace Alumni.Persistence.Configurations
                    .HasForeignKey<AlumniProfile>(p => p.UserId)
                    .OnDelete(DeleteBehavior.Cascade);
 
-            // 1-to-N Relationship with JobPosts (Cascade Delete)
+            // 1-to-N Relationship with JobPosts (Restrict Delete - DATA_DESIGN.md)
             builder.HasMany(u => u.JobPosts)
                    .WithOne(j => j.PostedByUser)
                    .HasForeignKey(j => j.PostedByUserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // 1-to-N Relationship with Applications
+            builder.HasMany(u => u.Applications)
+                   .WithOne(a => a.User)
+                   .HasForeignKey(a => a.UserId)
                    .OnDelete(DeleteBehavior.Cascade);
         }
     }

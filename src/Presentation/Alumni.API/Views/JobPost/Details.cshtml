@@ -1,0 +1,138 @@
+@model Alumni.Domain.Entities.JobPost
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlan Detayı — @Model.Title</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #1f2937; margin: 0; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; }
+        h1 { color: #4F46E5; margin: 0 0 0.5rem 0; }
+        .company-badge { display: inline-block; background-color: #EEF2FF; color: #4F46E5; padding: 6px 14px; border-radius: 9999px; font-weight: 600; font-size: 0.95rem; }
+        .info-card { background: #f3f4f6; padding: 1.25rem; border-radius: 8px; margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .info-item strong { color: #4b5563; }
+        .desc-section { background-color: #ffffff; border: 1px solid #e5e7eb; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
+        .desc-section h3 { margin-top: 0; color: #374151; }
+        .apply-card { background-color: #EFF6FF; border: 1px solid #BFDBFE; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
+        .apply-card h3 { color: #1E40AF; margin-top: 0; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; }
+        .alert-success { background-color: #DEF7EC; color: #03543F; border: 1px solid #BCF0DA; }
+        .alert-error { background-color: #FDE8E8; color: #9B1C1C; border: 1px solid #FBD5D5; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background-color: #f9fafb; color: #4b5563; font-weight: 600; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; background-color: #E0E7FF; color: #3730A3; }
+        .btn { padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-primary { background-color: #2563EB; color: white; }
+        .btn-primary:hover { background-color: #1D4ED8; }
+        .btn-back { background-color: #E5E7EB; color: #374151; }
+        .btn-back:hover { background-color: #D1D5DB; }
+        select { padding: 9px; border: 1px solid #D1D5DB; border-radius: 6px; font-family: inherit; width: 60%; margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>@Model.Title</h1>
+                <span class="company-badge">🏢 @Model.Company</span>
+            </div>
+            <a href="/jobs" class="btn btn-back">← İlanlara Dön</a>
+        </div>
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success">✅ @TempData["SuccessMessage"]</div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-error">⚠️ @TempData["ErrorMessage"]</div>
+        }
+
+        <div class="info-card">
+            <div class="info-item">
+                <strong>İlan ID:</strong> #@Model.Id
+            </div>
+            <div class="info-item">
+                <strong>İlanı Açan Kullanıcı:</strong>
+                <a href="/users/details/@Model.PostedByUserId" style="color: #4F46E5; font-weight: 600;">Kullanıcı #@Model.PostedByUserId</a>
+            </div>
+            <div class="info-item">
+                <strong>Oluşturulma Tarihi:</strong> @Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")
+            </div>
+            <div class="info-item">
+                <strong>Silme Kuralı:</strong> <span style="color: #059669; font-weight: 600;">Cascade (İlan silinirse başvuruları da silinir)</span>
+            </div>
+        </div>
+
+        <div class="desc-section">
+            <h3>İş Tanımı ve Detaylar</h3>
+            <p style="white-space: pre-wrap; margin: 0; line-height: 1.6; color: #4B5563;">@Model.Description</p>
+        </div>
+
+        <!-- Başvuru Formu -->
+        <div class="apply-card">
+            <h3>🚀 Bu İlana Başvuru Yap</h3>
+            <form action="/jobs/@Model.Id/apply" method="post" style="display: flex; align-items: center;">
+                <select name="userId" required>
+                    <option value="">-- Başvuran Kullanıcıyı Seçiniz --</option>
+                    @if (ViewBag.Users != null)
+                    {
+                        foreach (var user in (List<Alumni.Domain.Entities.User>)ViewBag.Users)
+                        {
+                            <option value="@user.Id">@user.FirstName @user.LastName (@user.Email)</option>
+                        }
+                    }
+                </select>
+                <button type="submit" class="btn btn-primary">Başvurumu Gönder</button>
+            </form>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #6B7280;">
+                ℹ️ <strong>Tekil Çift Kuralı:</strong> Bir kullanıcı bu ilana sadece bir kez başvurabilir (mükerrer başvuruda 409 Conflict verilir).
+            </p>
+        </div>
+
+        <!-- Başvuran Adaylar Listesi -->
+        <h3>👥 Bu İlana Başvuran Adaylar (@(((List<Alumni.Application.DTOs.Applications.ApplicantDto>)ViewBag.Applicants)?.Count ?? 0))</h3>
+        @{
+            var applicants = (List<Alumni.Application.DTOs.Applications.ApplicantDto>)ViewBag.Applicants;
+        }
+        @if (applicants == null || applicants.Count == 0)
+        {
+            <p style="color: #6B7280; font-style: italic;">Henüz bu ilana başvuran bir aday bulunmamaktadır.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Başvuru ID</th>
+                        <th>Aday Adı Soyadı</th>
+                        <th>E-Posta</th>
+                        <th>Başvuru Durumu</th>
+                        <th>Başvuru Tarihi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var app in applicants)
+                    {
+                        <tr>
+                            <td>#@app.ApplicationId</td>
+                            <td>
+                                <a href="/users/details/@app.UserId" style="color: #4F46E5; font-weight: 600; text-decoration: none;">
+                                    @app.FirstName @app.LastName
+                                </a>
+                            </td>
+                            <td>@app.Email</td>
+                            <td><span class="status-badge">@app.Status</span></td>
+                            <td>@app.AppliedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</body>
+</html>

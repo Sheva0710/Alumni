@@ -20,6 +20,8 @@ namespace Alumni.Persistence
             // Veritabanı destekli CRUD Servisleri
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IAnnouncementService, AnnouncementService>();
+            services.AddScoped<IJobPostService, JobPostService>();
+            services.AddScoped<IApplicationService, ApplicationService>();
 
             return services;
         }

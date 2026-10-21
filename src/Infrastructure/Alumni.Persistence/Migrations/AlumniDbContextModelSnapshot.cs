@@ -119,6 +119,53 @@ namespace Alumni.Persistence.Migrations
                     b.ToTable("announcements", (string)null);
                 });
 
+            modelBuilder.Entity("Alumni.Domain.Entities.Application", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("JobPostId")
+                        .HasColumnType("integer")
+                        .HasColumnName("job_post_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Applied")
+                        .HasColumnName("status");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_applications");
+
+                    b.HasIndex("JobPostId")
+                        .HasDatabaseName("ix_applications_job_post_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_applications_user_id");
+
+                    b.HasIndex("UserId", "JobPostId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_applications_user_id_job_post_id");
+
+                    b.ToTable("applications", (string)null);
+                });
+
             modelBuilder.Entity("Alumni.Domain.Entities.JobPost", b =>
                 {
                     b.Property<int>("Id")
@@ -226,19 +273,45 @@ namespace Alumni.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Alumni.Domain.Entities.Application", b =>
+                {
+                    b.HasOne("Alumni.Domain.Entities.JobPost", "JobPost")
+                        .WithMany("Applications")
+                        .HasForeignKey("JobPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alumni.Domain.Entities.User", "User")
+                        .WithMany("Applications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobPost");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Alumni.Domain.Entities.JobPost", b =>
                 {
                     b.HasOne("Alumni.Domain.Entities.User", "PostedByUser")
                         .WithMany("JobPosts")
                         .HasForeignKey("PostedByUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("PostedByUser");
                 });
 
+            modelBuilder.Entity("Alumni.Domain.Entities.JobPost", b =>
+                {
+                    b.Navigation("Applications");
+                });
+
             modelBuilder.Entity("Alumni.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Applications");
+
                     b.Navigation("JobPosts");
 
                     b.Navigation("Profile");

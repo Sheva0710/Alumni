@@ -1,15 +1,15 @@
 # 📊 Alumni Tracking System — Data Design & Database Architecture
 
-> **Doküman Türü:** Veri Modeli ve Veritabanı Mimari Şartnamesi (Data Design Specification)  
+> **Doküman Türü:** Veri Modeli ve Veritabanı Mimari Şartnamesi (Data Design Specification / ddd.md)  
 > **Teknoloji Yığını:** PostgreSQL 16 (`docker-compose` persistent volume: `postgres_data`) & Entity Framework Core (EF Core)  
-> **Sürüm:** v1.0 (5. Hafta: Database & ORM Kapsamı)  
+> **Sürüm:** v1.1 (6. Hafta: Relational Data, Nested Routing, Job Postings & Applications Kapsamı)  
 > **Durum:** Aktif / Single Source of Truth (SSOT)
 
 ---
 
 ## 1. 🎯 Genel Bakış ve Mimari Altyapı
 
-Bu doküman, **Alumni Tracking System (Mezun Takip Sistemi)** projesinin ilişkisel veritabanı şemasını, varlık (entity) modellerini, ilişkilerini (cardinality), kısıtlamalarını (constraints) ve silme davranışlarını (delete behaviors) tanımlayan **tek ve bağlayıcı kaynak (Single Source of Truth)** niteliğindedir.
+Bu doküman, **Alumni Tracking System (Mezun Takip Sistemi)** projesinin ilişkisel veritabanı şemasını, varlık (entity) modellerini, ilişkilerini (cardinality), kısıtlamalarını (constraints), silme davranışlarını (delete behaviors) ve iç içe uç nokta (nested routing) sözleşmelerini tanımlayan **tek ve bağlayıcı kaynak (Single Source of Truth)** niteliğindedir.
 
 ### 1.1 Teknoloji ve Altyapı Standartları
 * **Veritabanı Motoru:** **PostgreSQL 16** (`postgres:16-alpine` resmi Docker imajı).
@@ -17,20 +17,22 @@ Bu doküman, **Alumni Tracking System (Mezun Takip Sistemi)** projesinin ilişki
 * **ORM (Object-Relational Mapping):** **Entity Framework Core (EF Core)** - Code-First yaklaşımı.
 * **Sürücü / Sağlayıcı:** `Npgsql.EntityFrameworkCore.PostgreSQL`.
 * **İsimlendirme Konvansiyonu:**
-  * **C# / EF Core Katmanı:** `PascalCase` (Örn: `AlumniProfile`, `GraduationYear`, `PostedByUserId`).
-  * **PostgreSQL Veritabanı Katmanı:** `snake_case` (Örn: `alumni_profiles`, `graduation_year`, `posted_by_user_id`).
-  * **Tablo İsimleri:** Çoğul (Plural) form (`users`, `alumni_profiles`, `job_posts`).
+  * **C# / EF Core Katmanı:** `PascalCase` (Örn: `AlumniProfile`, `JobPost`, `Application`, `PostedByUserId`).
+  * **PostgreSQL Veritabanı Katmanı:** `snake_case` (Örn: `alumni_profiles`, `job_posts`, `applications`, `posted_by_user_id`).
+  * **Tablo İsimleri:** Çoğul (Plural) form (`users`, `alumni_profiles`, `job_posts`, `applications`, `announcements`).
 
 ---
 
 ## 2. 🧩 Varlık-İlişki Diyagramı (Entity-Relationship Diagram - ERD)
 
-Aşağıdaki Mermaid ER şeması sistemin temel varlıklarını, birincil (PK) ve yabancı (FK) anahtarlarını, veri tiplerini ve kardinalitelerini göstermektedir:
+Aşağıdaki Mermaid ER şeması sistemin temel varlıklarını, birincil (PK) ve yabancı (FK) anahtarlarını, veri tiplerini, 1:1, 1:N ve M:N (Join Table üzerinden) kardinalitelerini göstermektedir:
 
 ```mermaid
 erDiagram
     USERS ||--o| ALUMNI_PROFILES : "has (1:1)"
     USERS ||--o{ JOB_POSTS : "publishes (1:N)"
+    USERS ||--o{ APPLICATIONS : "submits (1:N)"
+    JOB_POSTS ||--o{ APPLICATIONS : "receives (1:N)"
 
     USERS {
         int id PK "SERIAL / IDENTITY"
@@ -56,10 +58,29 @@ erDiagram
         string title "VARCHAR(200) NOT NULL"
         string company "VARCHAR(200) NOT NULL"
         text description "TEXT NOT NULL"
-        int posted_by_user_id FK "INT NOT NULL (or NULL for Set Null)"
+        int posted_by_user_id FK "INT NOT NULL"
+        timestamptz created_at "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    }
+
+    APPLICATIONS {
+        int id PK "SERIAL / IDENTITY"
+        int user_id FK "INT NOT NULL"
+        int job_post_id FK "INT NOT NULL"
+        string status "VARCHAR(50) NOT NULL DEFAULT 'Applied'"
+        timestamptz created_at "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
+    }
+
+    ANNOUNCEMENTS {
+        int id PK "SERIAL / IDENTITY"
+        string title "VARCHAR(200) NOT NULL"
+        text content "TEXT NOT NULL"
+        string author "VARCHAR(100) NOT NULL"
+        boolean is_active "BOOLEAN NOT NULL DEFAULT TRUE"
         timestamptz created_at "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
     }
 ```
+
+> **Not:** `USERS` ve `JOB_POSTS` arasındaki çoka-çok (**Many-to-Many**) ilişki, bir ara tablo (Join Table) olan `APPLICATIONS` tablosu üzerinden kurulur. Bir satır tam olarak bir `(user_id, job_post_id)` çiftini temsil eder.
 
 ---
 
@@ -73,7 +94,7 @@ Platforma kaydolan tüm aktörlerin (Mezun, Yönetici, İşveren vb.) kimlik ve 
 | `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | Benzersiz kullanıcı tanımlayıcısı |
 | `first_name` | `FirstName` | `VARCHAR(100)` | `string` | **Hayır** | `NOT NULL` | Kullanıcının adı |
 | `last_name` | `LastName` | `VARCHAR(100)` | `string` | **Hayır** | `NOT NULL` | Kullanıcının soyadı |
-| `email` | `Email` | `VARCHAR(255)` | `string` | **Hayır** | `UNIQUE INDEX` | Benzersiz ve doğrulanmış e-posta adresi |
+| `email` | `Email` | `VARCHAR(255)` | `string` | **Hayır** | `UNIQUE INDEX` | Benzersiz e-posta adresi |
 | `role` | `Role` | `VARCHAR(50)` | `string` | **Hayır** | `DEFAULT 'Alumni'` | Sistem rolü (`Admin`, `Alumni`, `Employer`) |
 | `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | Kayıt oluşturulma zamanı (UTC) |
 
@@ -94,39 +115,68 @@ Mezun rolündeki kullanıcılara ait akademik geçmiş ve profesyonel kariyer de
 
 ---
 
-### 3.3 `JobPosts` Tablosu (`job_posts`)
-Mezunlar veya kariyer merkezi yetkilileri tarafından paylaşılan iş/staj ilanlarını barındırır.
+### 3.3 `JobPosts` Tablosu (`job_posts` / `job_postings`)
+Kullanıcılar veya kariyer merkezi tarafından paylaşılan iş/staj ilanlarını barındırır (1-to-N).
 
 | Sütun Adı (DB) | C# Özellik Adı | Veri Tipi (PostgreSQL) | C# Tipi | Boş Olabilir? | Kısıt / İndeks | Açıklama |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | İlan benzersiz tanımlayıcısı |
-| `title` | `Title` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlan başlığı (Örn: Senior .NET Developer) |
-| `company` | `Company` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlanı veren firma adı |
-| `description` | `Description` | `TEXT` | `string` | **Hayır** | `NOT NULL` | İlanın detaylı açıklaması ve şartlar |
-| `posted_by_user_id` | `PostedByUserId` | `INTEGER` | `int` (veya `int?`)| **Model Tercihine Bağlı** | `FOREIGN KEY`, `INDEX` | İlanı açan kullanıcı (`Users.Id`) |
+| `title` | `Title` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlan başlığı (Örn: Junior Developer) |
+| `company` | `Company` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlanı veren firma adı (Örn: Acme) |
+| `description` | `Description` | `TEXT` | `string` | **Hayır** | `NOT NULL` | İlan detayları, gereksinimler |
+| `posted_by_user_id` | `PostedByUserId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `INDEX` | İlanı açan kullanıcı (`Users.Id`). Var olmayan kullanıcıya ilan açılamaz! |
 | `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | İlan paylaşım zamanı (UTC) |
+
+---
+
+### 3.4 `Applications` Tablosu (`applications` - Join Table)
+Kullanıcıların iş ilanlarına yaptığı başvuruları tutar (Many-to-Many çözümleyici ara tablo).
+
+| Sütun Adı (DB) | C# Özellik Adı | Veri Tipi (PostgreSQL) | C# Tipi | Boş Olabilir? | Kısıt / İndeks | Açıklama |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | Başvuru kayıt numarası |
+| `user_id` | `UserId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `INDEX` | Başvuran kullanıcı (`Users.Id`) |
+| `job_post_id` | `JobPostId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `INDEX` | Başvurulan iş ilanı (`JobPosts.Id`) |
+| `status` | `Status` | `VARCHAR(50)` | `string` | **Hayır** | `DEFAULT 'Applied'` | Başvuru durumu (`Applied`, `Reviewing`, `Interview`, `Accepted`, `Rejected`) |
+| `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | Başvuru oluşturulma zamanı (UTC) |
+
+> 🔒 **Tekil Çift Kuralı (Unique Pair Constraint):**  
+> `UNIQUE (user_id, job_post_id)` kısıtlaması sayesinde aynı kullanıcı aynı ilana **yalnızca bir kez** başvurabilir. Mükerrer başvuru durumunda veritabanı kısıt hatası verir, API katmanı **`409 Conflict`** yanıtı döner.
 
 ---
 
 ## 4. 🔗 İlişkiler, Kardinalite ve Silme Davranışları (Relationships & Delete Behaviors)
 
-### 4.1 `Users` ↔ `AlumniProfiles` (1-to-1 İlişkisi)
-* **Kardinalite:** `1 : 0..1` (Her kullanıcının en fazla bir mezun profili olabilir; her profil tam olarak bir kullanıcıya aittir).
+### 4.1 `Users` ↔ `AlumniProfiles` (1-to-1)
+* **Kardinalite:** `1 : 0..1` (Her kullanıcının en fazla bir mezun profili olabilir).
 * **Yabancı Anahtar:** `alumni_profiles.user_id` -> `users.id`.
-* **Birebir Kısıtlaması:** `alumni_profiles.user_id` üzerinde **UNIQUE Index** tanımlanarak tekillik garanti altına alınır.
-* **Silme Davranışı (Delete Behavior):**
-  * **`Cascade` (`DeleteBehavior.Cascade`):** Bir `User` kaydı silindiğinde, o kullanıcıya ait `AlumniProfile` kaydının sistemde anlamsız (orphan) kalmaması için profil de **otomatik olarak veritabanından silinir**.
+* **Silme Kuralı:** **`Cascade`**. Kullanıcı silindiğinde profil de sistemden tamamen temizlenir.
 
-### 4.2 `Users` ↔ `JobPosts` (1-to-N İlişkisi)
-* **Kardinalite:** `1 : 0..N` (Bir kullanıcı sıfır, bir veya birden fazla iş ilanı paylaşabilir; paylaşılan bir iş ilanı bir kullanıcı tarafından açılmıştır).
-* **Yabancı Anahtar:** `job_posts.posted_by_user_id` -> `users.id`.
-* **Silme Davranışları ve Stratejik Tercihler:**
-  1. **Cascade Silme (Ön Tanımlı - Standard Clean Deletion):**
-     * **EF Core Ayarı:** `OnDelete(DeleteBehavior.Cascade)`
-     * **Açıklama:** Kullanıcı hesabı sistemden kaldırıldığında, yayınladığı tüm iş ilanları da otomatik olarak silinir. Test ortamlarında ve veri temizliği odaklı süreçlerde önerilir.
-  2. **Set Null Silme (Kurumsal Arşivleme - Institutional Retention):**
-     * **EF Core Ayarı:** `OnDelete(DeleteBehavior.SetNull)`
-     * **Açıklama:** İş ilanlarının kurumsal hafıza veya başvuran diğer mezunların mağdur olmaması adına yayında kalması istendiğinde, `job_posts.posted_by_user_id` kolonu `NULL` kabul edecek şekilde tasarlanır (`int? PostedByUserId`). Kullanıcı silindiğinde ilan silinmez, sadece ilanı açan alan `NULL` (Anonim / Kariyer Merkezi) değerini alır.
+---
+
+### 4.2 `Users` ↔ `JobPosts` (1-to-N) — İlan Açma İlişkisi ve Silme Kararı
+* **Kardinalite:** `1 : 0..N` (Bir kullanıcı birden çok iş ilanı yayınlayabilir; her ilan mutlaka bir kullanıcıya aittir).
+* **Yabancı Anahtar:** `job_posts.posted_by_user_id` -> `users.id` (PostgreSQL ve EF Core düzeyinde zorunlu FK).
+* **Silme Davranışı Kararı (Delete Rule Decision):**
+  * **Seçilen Strateji: `Restrict` (`DeleteBehavior.Restrict` / HTTP 409 Conflict)**
+  * **Mimari ve İş Gerekçesi:**  
+    Bir kullanıcının (mezun veya işveren) yayınlamış olduğu iş ilanları mevcutken ve bu ilanlara diğer mezunlar başvurmuş olabileceğinden, ilan sahibinin doğrudan silinmesi kurumsal hafızanın ve aday başvurularının beklenmedik biçimde yok olmasına (veri kaybı) yol açar.  
+    Bu nedenle `Users` tablosundan bir kayıt silinmek istendiğinde:
+    1. Eğer kullanıcının yayınladığı ilanlar varsa veritabanı kısıtı devreye girer veya controller katmanı bu durumu kontrol eder.
+    2. İstek reddedilir ve istemciye **`409 Conflict`** ("Kullanıcıya ait iş ilanları bulunmaktadır. Önce ilanları kaldırınız.") yanıtı dönülür.
+    3. Böylece kaza eseri toplu veri silinmesinin (accidental cascade) önüne geçilir.
+  * *(Geliştirme / Test Amaçlı Alternatif - Cascade):* Test suite'lerinde veya izole ortamlarda `Cascade` çalıştırılabilir, ancak üretim şartnamesi olarak **`Restrict`** esastır.
+
+---
+
+### 4.3 `JobPosts` ↔ `Applications` ↔ `Users` (Many-to-Many)
+* **Kardinalite:**
+  * `Users (1) ──< Applications (N)`
+  * `JobPosts (1) ──< Applications (N)`
+* **Join Table:** `applications`.
+* **Silme Davranışları:**
+  1. **İlan Silindiğinde (`JobPost` silinirse):** **`Cascade`**. İlan yayından kalktığında o ilana yapılan başvuruların açıkta kalmaması için başvurular da otomatik olarak silinir.
+  2. **Başvuran Kullanıcı Silindiğinde (`User` silinirse):** Kullanıcının hiçbir ilanı yoksa ancak yalnızca başvuruları varsa, başvuruları **`Cascade`** ile temizlenebilir veya kullanıcı silinmeden önce başvuruları geri çekilebilir.
 
 ---
 
@@ -134,19 +184,86 @@ Mezunlar veya kariyer merkezi yetkilileri tarafından paylaşılan iş/staj ilan
 
 | Tablo | İndeks / Kısıt Adı | Hedef Kolon(lar) | Tür | Amaç / Gerekçe |
 | :--- | :--- | :--- | :--- | :--- |
-| `users` | `pk_users` | `id` | `PRIMARY KEY` (B-Tree) | Hızlı satır erişimi ve kümeleme (Clustering). |
-| `users` | `ix_users_email` | `email` | `UNIQUE INDEX` | E-posta tekilliğini garanti altına alma ve oturum açma sorgularını hızlandırma. |
-| `alumni_profiles`| `pk_alumni_profiles` | `id` | `PRIMARY KEY` (B-Tree) | Profil tekil anahtarı. |
-| `alumni_profiles`| `ix_alumni_profiles_user_id` | `user_id` | `UNIQUE INDEX` | 1-to-1 ilişkiyi garanti altına alma ve JOIN optimizasyonu. |
-| `alumni_profiles`| `chk_alumni_profiles_grad_year` | `graduation_year` | `CHECK CONSTRAINT` | Mantıksız mezuniyet yılı girişlerini engelleme (`graduation_year >= 1950 AND graduation_year <= 2100`). |
-| `job_posts` | `pk_job_posts` | `id` | `PRIMARY KEY` (B-Tree) | İlan tekil anahtarı. |
-| `job_posts` | `ix_job_posts_posted_by_user_id` | `posted_by_user_id` | `INDEX` (B-Tree) | Kullanıcının paylaştığı ilanları listelerken veya JOIN işlemlerinde arama maliyetini düşürme. |
+| `users` | `pk_users` | `id` | `PRIMARY KEY` | Tekil satır tanımlayıcısı |
+| `users` | `ix_users_email` | `email` | `UNIQUE INDEX` | E-posta tekilliği ve hızlı sorgulama |
+| `alumni_profiles`| `pk_alumni_profiles` | `id` | `PRIMARY KEY` | Profil anahtarı |
+| `alumni_profiles`| `ix_alumni_profiles_user_id` | `user_id` | `UNIQUE INDEX` | 1-to-1 tekillik garantisi |
+| `alumni_profiles`| `chk_alumni_profiles_grad_year` | `graduation_year` | `CHECK` | 1950 - 2100 yıl aralığı doğrulaması |
+| `job_posts` | `pk_job_posts` | `id` | `PRIMARY KEY` | İlan anahtarı |
+| `job_posts` | `ix_job_posts_posted_by_user_id`| `posted_by_user_id` | `INDEX` | Kullanıcı bazlı ilan aramalarını hızlandırma |
+| `job_posts` | `fk_job_posts_users` | `posted_by_user_id` | `FOREIGN KEY` | Var olmayan kullanıcıya ilan açılmasını engelleme |
+| `applications` | `pk_applications` | `id` | `PRIMARY KEY` | Başvuru anahtarı |
+| `applications` | `uq_applications_user_job` | `user_id`, `job_post_id` | **`UNIQUE INDEX`** | **Aynı kullanıcının aynı ilana ikinci kez başvurmasını engelleme (409 Conflict)** |
+| `applications` | `ix_applications_user_id` | `user_id` | `INDEX` | Bir kullanıcının yaptığı başvuruları getirme |
+| `applications` | `ix_applications_job_post_id` | `job_post_id` | `INDEX` | Bir ilana gelen başvuruları getirme |
+| `applications` | `chk_applications_status` | `status` | `CHECK` | Geçerli durum kodları kontrolü (`Applied`, `Reviewing`, `Interview`, `Accepted`, `Rejected`) |
 
 ---
 
-## 6. ⚙️ Entity Framework Core (EF Core) Fluent API Konfigürasyon Taslağı
+## 6. 🌐 Gelişmiş Yönlendirme ve REST API Sözleşmeleri (Advanced Routing Specification)
 
-`Alumni.Persistence` katmanı altında `IEntityTypeConfiguration<T>` kullanılarak uygulanacak kurumsal Fluent API konfigürasyon taslağı:
+Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager loading (include) ve HTTP durum kodu kuralları:
+
+### 6.1 Kullanıcı ve İlan Yönlendirmeleri (Nested Routes)
+* **`POST /api/users/{id}/jobs`**
+  * **İşlev:** Belirtilen kullanıcı adına yeni bir iş ilanı oluşturur.
+  * **Önemli Kural:** İlanı açan kullanıcının kimliği gövdeden (body) **değil**, doğrudan URL yol parametresinden (`{id}`) alınır.
+  * **Yanıtlar:**
+    * `201 Created` — İlan başarıyla oluşturuldu (oluşturulan ilan nesnesi gövdede döner).
+    * `404 Not Found` — Verilen `{id}` değerine sahip kullanıcı veritabanında bulunamadı.
+    * `400 Bad Request` — Eksik veya geçersiz alanlar (başlık, şirket veya açıklama boş).
+
+* **`GET /api/users/{id}/jobs`**
+  * **İşlev:** Belirtilen kullanıcının açtığı tüm iş ilanlarını listeler.
+  * **Yanıtlar:**
+    * `200 OK` — İlan dizisi döner (ilan yoksa boş liste `[]` döner).
+    * `404 Not Found` — Belirtilen kullanıcı mevcut değil.
+
+* **`GET /api/users/{id}` (Include / Join Kuralı)**
+  * **İşlev:** Kullanıcı detayını getirirken, ilişkili olduğu iş ilanlarını da tek yanıtta `jobs` dizisi olarak dahil eder (`Eager Loading / LEFT JOIN`).
+  * **Örnek Yanıt:**
+    ```json
+    {
+      "id": 1,
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "email": "ada@iu.edu.tr",
+      "role": "Alumni",
+      "jobs": [
+        {
+          "id": 10,
+          "title": "Backend Intern",
+          "company": "Acme",
+          "createdAt": "2026-10-21T09:00:00Z"
+        }
+      ]
+    }
+    ```
+  * **Önemli Kural:** Kullanıcının hiç ilanı yoksa bile kullanıcı bilgisi eksiksiz döner ve `"jobs": []` şeklinde boş dizi barındırır (`LEFT JOIN` davranışı).
+
+* **`DELETE /api/users/{id}` (Silme Kuralı Davranışı)**
+  * Kullanıcının aktif ilanları varsa silme işlemi engellenir ve **`409 Conflict`** döner (`Restrict` kuralı).
+  * Kullanıcının ilanı yoksa silinir ve **`204 No Content`** döner.
+
+---
+
+### 6.2 Başvuru Yönlendirmeleri (Applications Routes)
+* **`POST /api/jobs/{id}/applications`**
+  * **İşlev:** Belirtilen iş ilanına bir kullanıcı adına başvuru yapar (`{ "userId": 3 }`).
+  * **Yanıtlar:**
+    * `201 Created` — Başvuru başarıyla alındı.
+    * `404 Not Found` — İlan (`{id}`) veya başvuran kullanıcı (`userId`) veritabanında yok.
+    * `409 Conflict` — **Mükerrer Başvuru:** Bu kullanıcı bu ilana daha önce başvurmuş (`UNIQUE (user_id, job_post_id)`).
+
+* **`GET /api/jobs/{id}/applications`**
+  * **İşlev:** Bir ilana başvuran tüm adayların ve başvuru tarihlerinin listesini döner.
+
+* **`GET /api/users/{id}/applications`**
+  * **İşlev:** Bir kullanıcının başvurduğu tüm iş ilanlarının ve başvuru statülerinin listesini döner.
+
+---
+
+## 7. ⚙️ Entity Framework Core (EF Core) Fluent API Konfigürasyon Taslağı
 
 ```csharp
 using Alumni.Domain.Entities;
@@ -179,36 +296,21 @@ namespace Alumni.Persistence.Configurations
                    .HasForeignKey<AlumniProfile>(p => p.UserId)
                    .OnDelete(DeleteBehavior.Cascade);
 
-            // 1-to-N Relationship with JobPosts
+            // 1-to-N Relationship with JobPosts (Restrict Delete - ddd.md kararı)
             builder.HasMany(u => u.JobPosts)
                    .WithOne(j => j.PostedByUser)
                    .HasForeignKey(j => j.PostedByUserId)
-                   .OnDelete(DeleteBehavior.Cascade); // veya arşiv modeli için DeleteBehavior.SetNull
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // 1-to-N Relationship with Applications
+            builder.HasMany(u => u.Applications)
+                   .WithOne(a => a.User)
+                   .HasForeignKey(a => a.UserId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 
-    // 2. AlumniProfile Configuration
-    public class AlumniProfileConfiguration : IEntityTypeConfiguration<AlumniProfile>
-    {
-        public void Configure(EntityTypeBuilder<AlumniProfile> builder)
-        {
-            builder.ToTable("alumni_profiles");
-
-            builder.HasKey(p => p.Id).HasName("pk_alumni_profiles");
-            builder.Property(p => p.Id).HasColumnName("id").ValueGeneratedOnAdd();
-
-            builder.Property(p => p.UserId).HasColumnName("user_id").IsRequired();
-            builder.HasIndex(p => p.UserId).IsUnique().HasDatabaseName("ix_alumni_profiles_user_id");
-
-            builder.Property(p => p.Department).HasColumnName("department").HasMaxLength(150).IsRequired();
-            builder.Property(p => p.GraduationYear).HasColumnName("graduation_year").IsRequired();
-            builder.Property(p => p.CurrentCompany).HasColumnName("current_company").HasMaxLength(200).IsRequired(false);
-            builder.Property(p => p.CurrentTitle).HasColumnName("current_title").HasMaxLength(150).IsRequired(false);
-            builder.Property(p => p.LinkedInUrl).HasColumnName("linkedin_url").HasMaxLength(500).IsRequired(false);
-        }
-    }
-
-    // 3. JobPost Configuration
+    // 2. JobPost Configuration
     public class JobPostConfiguration : IEntityTypeConfiguration<JobPost>
     {
         public void Configure(EntityTypeBuilder<JobPost> builder)
@@ -225,6 +327,48 @@ namespace Alumni.Persistence.Configurations
             builder.HasIndex(j => j.PostedByUserId).HasDatabaseName("ix_job_posts_posted_by_user_id");
 
             builder.Property(j => j.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // 1-to-N Relationship with Applications (İlan silinince başvuruları silinsin: Cascade)
+            builder.HasMany(j => j.Applications)
+                   .WithOne(a => a.JobPost)
+                   .HasForeignKey(a => a.JobPostId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+    // 3. Application Configuration (Join Table / Entity)
+    public class ApplicationConfiguration : IEntityTypeConfiguration<Application>
+    {
+        public void Configure(EntityTypeBuilder<Application> builder)
+        {
+            builder.ToTable("applications");
+
+            builder.HasKey(a => a.Id).HasName("pk_applications");
+            builder.Property(a => a.Id).HasColumnName("id").ValueGeneratedOnAdd();
+
+            builder.Property(a => a.UserId).HasColumnName("user_id").IsRequired();
+            builder.Property(a => a.JobPostId).HasColumnName("job_post_id").IsRequired();
+
+            builder.Property(a => a.Status).HasColumnName("status").HasMaxLength(50).IsRequired().HasDefaultValue("Applied");
+            builder.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Unique Pair Constraint: UNIQUE (user_id, job_post_id)
+            builder.HasIndex(a => new { a.UserId, a.JobPostId })
+                   .IsUnique()
+                   .HasDatabaseName("ix_applications_user_id_job_post_id");
+
+            builder.HasIndex(a => a.UserId).HasDatabaseName("ix_applications_user_id");
+            builder.HasIndex(a => a.JobPostId).HasDatabaseName("ix_applications_job_post_id");
+
+            builder.HasOne(a => a.User)
+                   .WithMany(u => u.Applications)
+                   .HasForeignKey(a => a.UserId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(a => a.JobPost)
+                   .WithMany(j => j.Applications)
+                   .HasForeignKey(a => a.JobPostId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
@@ -232,9 +376,7 @@ namespace Alumni.Persistence.Configurations
 
 ---
 
-## 7. 🐘 PostgreSQL 16 DDL Şema Karşılığı (Reference SQL)
-
-Aşağıdaki SQL betiği, PostgreSQL 16 üzerinde doğrudan çalıştırılabilecek eşdeğer DDL şemasını temsil eder:
+## 8. 🐘 PostgreSQL 16 DDL Şema Karşılığı (Reference SQL)
 
 ```sql
 -- 1. Users Tablosu
@@ -275,42 +417,55 @@ CREATE TABLE IF NOT EXISTS job_posts (
     posted_by_user_id INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_job_posts_users FOREIGN KEY (posted_by_user_id) 
-        REFERENCES users(id) ON DELETE CASCADE
+        REFERENCES users(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS ix_job_posts_posted_by_user_id ON job_posts(posted_by_user_id);
+
+-- 4. Applications Tablosu (Many-to-Many Join Table)
+CREATE TABLE IF NOT EXISTS applications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    job_post_id INT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Applied',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_applications_users FOREIGN KEY (user_id) 
+        REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_applications_job_posts FOREIGN KEY (job_post_id) 
+        REFERENCES job_posts(id) ON DELETE CASCADE,
+    CONSTRAINT uq_applications_user_job UNIQUE (user_id, job_post_id),
+    CONSTRAINT chk_applications_status CHECK (status IN ('Applied', 'Reviewing', 'Interview', 'Accepted', 'Rejected'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_applications_user_id_job_post_id ON applications(user_id, job_post_id);
+CREATE INDEX IF NOT EXISTS ix_applications_user_id ON applications(user_id);
+CREATE INDEX IF NOT EXISTS ix_applications_job_post_id ON applications(job_post_id);
 ```
 
 ---
 
-## 8. 🌱 Factory ve Veritabanı Tohumlama (Seed) Sistemi
+## 9. 🌱 Factory ve Tohumlama (Seed) İdempotensi Stratejisi
 
-Sistemin geliştirme, test ve ilk canlıya alma aşamalarında ilişkisel bütünlüğe sahip verilerle ayağa kalkmasını sağlamak üzere **Factory Pattern** ve **Idempotent Database Seeder** mimarisi uygulanmıştır.
+Tohumlama betiği ardışık iki kez çalıştırıldığında hata vermemeli ve veri bütünlüğünü bozmamalıdır (**idempotency**).
 
-### 8.1 Fabrika Sınıfları (Factories) — `Alumni.Persistence/Seed/Factories/`
-Fabrika sınıflarının temel amacı, `DATA_DESIGN.md` standartlarına ve kısıtlamalarına tam uyumlu, tutarlı varlık örnekleri (instances) üretmektir:
+### 9.1 Sıralı Temizleme (Table Emptying & Sequence Reset)
+Yeni bir tohumlama yapılmadan önce veya test başlatılırken tablolar yabancı anahtar hiyerarşisine ters sırada temizlenir ve kimlik sayaçları (identity sequences) sıfırlanır:
+1. `applications` silinir (en alttaki bağımlı join tablo)
+2. `job_posts` silinir
+3. `alumni_profiles` silinir
+4. `users` silinir
+5. `announcements` silinir
 
-1. **`UserFactory`**:
-   - `Admin`, `Alumni` ve `Employer` rollerine uygun doğrulanmış kullanıcılar üretir.
-   - E-posta adreslerini küçük harfe ve tekil formata normalize eder (`ix_users_email`).
-2. **`AlumniProfileFactory`**:
-   - `chk_alumni_profiles_grad_year` kısıtını (1950 - 2100) derleme/çalışma anında denetler.
-   - `Users` ile 1-to-1 ilişkili profil modelleri üretir.
-3. **`JobPostFactory`**:
-   - İlanı açan kullanıcı (`posted_by_user_id`) ile 1-to-N yabancı anahtar ilişkisini kurarak iş ilanları üretir.
-4. **`AnnouncementFactory`**:
-   - Sistem ve mezunlar buluşması duyurularını üretir.
-
-### 8.2 Tohumlama Mekanizması (Seeder) — `Alumni.Persistence/Seed/DatabaseSeeder.cs`
-- **Tetiklenme:** ASP.NET Core başlatma aşamasında (`Program.cs`) DI scope'u üzerinden otomatik çağrılır.
-- **Idempotency (Tekrarlanabilirlik Güvencesi):** `context.Users.AnyAsync()` kontrolü ile veritabanında önceden kayıt varsa tohumlama işlemi güvenle atlanır, mükerrer veri engellenir.
-- **İlişkisel Kayıt Sırası:** Önce `Users` kaydedilerek `Id`'ler elde edilir, ardından türeyen `AlumniProfiles` ve `JobPosts` kayıtları yabancı anahtarlara bağlanarak saklanır.
+### 9.2 Sıralı Yükleme (Hierarchical Insertion)
+1. **`UserFactory`**: Temel kullanıcılar (`Ada Lovelace`, `Can Ozturk`, `Elif Kaya` vb.) üretilir ve `users` tablosuna kaydedilerek kalıcı `id`'leri alınır.
+2. **`AlumniProfileFactory`**: Üretilen kullanıcıların `id`'leri kullanılarak mezun profilleri bağlanır.
+3. **`JobPostFactory`**: Kullanıcıların `id`'leri atanarak iş ilanları (`Backend Intern`, `Data Analyst`, `QA Tester`) oluşturulur.
+4. **`ApplicationFactory`**: Farklı kullanıcılar ile iş ilanları arasında tekil çiftler (`(userId: 3, jobPostId: 10)`, `(userId: 2, jobPostId: 10)`) oluşturularak başvurular kaydedilir. Mükerrer başvuru içermez.
 
 ---
 
-## 9. 🤖 AI & Antigravity Assistant Directive (Data Single Source of Truth)
+## 10. 🤖 AI & Antigravity Assistant Directive (Data Single Source of Truth)
 
 > [!IMPORTANT]
 > **AI / Antigravity Assistant Directive (Data Single Source of Truth):**  
-> All entity models, DTOs, migrations, and database schema modifications MUST strictly reference and adhere to [DATA_DESIGN.md](./DATA_DESIGN.md). Whenever a database table, entity, property, or relationship is added, updated, or deleted in the codebase, the AI assistant MUST keep `DATA_DESIGN.md` synchronized and updated as the single source of truth.
-
+> Tüm entity sınıfları, migration'lar, controller'lar, DTO'lar ve SQL sorguları doğrudan bu şartnameyi referans almalıdır. Bir veri kuralı, yeni alan veya silme davranışı değiştiğinde ilk güncellenecek dosya daima `DATA_DESIGN.md` olacaktır.

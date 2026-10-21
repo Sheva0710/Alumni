@@ -165,7 +165,14 @@ public static class StaticHtmlPages
         </head>
         <body>
             <header>
-                <a href="#" class="logo">🎓 Alumni Network</a>
+                <a href="/" class="logo">🎓 Alumni Network</a>
+                <nav style="display: flex; gap: 1.25rem; align-items: center;">
+                    <a href="/users" style="color: var(--text); text-decoration: none; font-weight: 500;">👥 Kullanıcılar</a>
+                    <a href="/jobs" style="color: var(--text); text-decoration: none; font-weight: 500;">💼 İş İlanları</a>
+                    <a href="/applications" style="color: var(--text); text-decoration: none; font-weight: 500;">📋 Başvurular</a>
+                    <a href="/announcements" style="color: var(--text); text-decoration: none; font-weight: 500;">📢 Duyurular</a>
+                    <a href="/api/swagger" style="color: var(--primary); text-decoration: none; font-weight: 600;">⚡ API</a>
+                </nav>
                 <div class="auth-buttons">
                     <button class="btn-login">Giriş Yap</button>
                     <button class="btn-register">Kayıt Ol</button>
