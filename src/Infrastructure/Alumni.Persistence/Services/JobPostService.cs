@@ -39,7 +39,7 @@ namespace Alumni.Persistence.Services
                 .ToListAsync();
         }
 
-        public async Task<JobPost?> CreateForUserAsync(int userId, string title, string company, string description)
+        public async Task<JobPost?> CreateForUserAsync(int userId, string title, string company, string? city = null, string? description = null)
         {
             var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
             if (!userExists)
@@ -52,7 +52,8 @@ namespace Alumni.Persistence.Services
                 PostedByUserId = userId,
                 Title = title.Trim(),
                 Company = company.Trim(),
-                Description = description.Trim(),
+                City = string.IsNullOrWhiteSpace(city) ? null : city.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 

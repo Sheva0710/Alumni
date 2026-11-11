@@ -13,9 +13,11 @@ namespace Alumni.Persistence.Configurations
             builder.HasKey(j => j.Id).HasName("pk_job_posts");
             builder.Property(j => j.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
-            builder.Property(j => j.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
+            // JobPosting kuralları: title required, max 120 chars; company required; city & description optional
+            builder.Property(j => j.Title).HasColumnName("title").HasMaxLength(120).IsRequired();
             builder.Property(j => j.Company).HasColumnName("company").HasMaxLength(200).IsRequired();
-            builder.Property(j => j.Description).HasColumnName("description").HasColumnType("text").IsRequired();
+            builder.Property(j => j.City).HasColumnName("city").HasMaxLength(100).IsRequired(false);
+            builder.Property(j => j.Description).HasColumnName("description").HasColumnType("text").IsRequired(false);
             builder.Property(j => j.PostedByUserId).HasColumnName("posted_by_user_id").IsRequired();
             builder.HasIndex(j => j.PostedByUserId).HasDatabaseName("ix_job_posts_posted_by_user_id");
 

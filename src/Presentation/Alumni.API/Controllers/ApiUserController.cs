@@ -131,11 +131,17 @@ namespace Alumni.API.Controllers
                 return BadRequest(new { message = "İlan başlığı (title) ve şirket adı (company) zorunludur." });
             }
 
+            if (request.Title.Trim().Length > 120)
+            {
+                return BadRequest(new { message = "İlan başlığı (title) en fazla 120 karakter olabilir." });
+            }
+
             var jobPost = await _jobPostService.CreateForUserAsync(
                 id,
                 request.Title,
                 request.Company,
-                request.Description ?? string.Empty
+                request.City,
+                request.Description
             );
 
             if (jobPost == null)

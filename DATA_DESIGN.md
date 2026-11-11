@@ -2,7 +2,7 @@
 
 > **Doküman Türü:** Veri Modeli ve Veritabanı Mimari Şartnamesi (Data Design Specification / ddd.md)  
 > **Teknoloji Yığını:** PostgreSQL 16 (`docker-compose` persistent volume: `postgres_data`) & Entity Framework Core (EF Core)  
-> **Sürüm:** v1.1 (6. Hafta: Relational Data, Nested Routing, Job Postings & Applications Kapsamı)  
+> **Sürüm:** v1.2 (7. Hafta: JobPosting Validasyon Kuralları ve Şema Güncellemesi)  
 > **Durum:** Aktif / Single Source of Truth (SSOT)
 
 ---
@@ -55,9 +55,10 @@ erDiagram
 
     JOB_POSTS {
         int id PK "SERIAL / IDENTITY"
-        string title "VARCHAR(200) NOT NULL"
+        string title "VARCHAR(120) NOT NULL"
         string company "VARCHAR(200) NOT NULL"
-        text description "TEXT NOT NULL"
+        string city "VARCHAR(100) NULL"
+        text description "TEXT NULL"
         int posted_by_user_id FK "INT NOT NULL"
         timestamptz created_at "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
     }
@@ -121,11 +122,18 @@ Kullanıcılar veya kariyer merkezi tarafından paylaşılan iş/staj ilanların
 | Sütun Adı (DB) | C# Özellik Adı | Veri Tipi (PostgreSQL) | C# Tipi | Boş Olabilir? | Kısıt / İndeks | Açıklama |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | İlan benzersiz tanımlayıcısı |
-| `title` | `Title` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlan başlığı (Örn: Junior Developer) |
-| `company` | `Company` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlanı veren firma adı (Örn: Acme) |
-| `description` | `Description` | `TEXT` | `string` | **Hayır** | `NOT NULL` | İlan detayları, gereksinimler |
+| `title` | `Title` | `VARCHAR(120)` | `string` | **Hayır** | `NOT NULL`, `MAXLENGTH(120)` | İlan başlığı (Zorunlu, maks. 120 karakter) |
+| `company` | `Company` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlanı veren firma adı (Zorunlu) |
+| `city` | `City` | `VARCHAR(100)` | `string?` | **Evet** | `NULL` | İlan lokasyonu / şehir (İsteğe bağlı, Örn: 'İstanbul', 'Remote') |
+| `description` | `Description` | `TEXT` | `string?` | **Evet** | `NULL` | İlan detayları, açıklaması (İsteğe bağlı) |
 | `posted_by_user_id` | `PostedByUserId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `INDEX` | İlanı açan kullanıcı (`Users.Id`). Var olmayan kullanıcıya ilan açılamaz! |
 | `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | İlan paylaşım zamanı (UTC) |
+
+> 📌 **JobPosting Alan ve Doğrulama Kuralları:**
+> - `Title`: Zorunlu alan (`required`), en fazla 120 karakter (`max 120 characters`).
+> - `Company`: Zorunlu alan (`required`).
+> - `City`: İsteğe bağlı (`optional`), en fazla 100 karakter.
+> - `Description`: İsteğe bağlı (`optional`), detaylı metin.
 
 ---
 
@@ -208,10 +216,15 @@ Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager lo
 * **`POST /api/users/{id}/jobs`**
   * **İşlev:** Belirtilen kullanıcı adına yeni bir iş ilanı oluşturur.
   * **Önemli Kural:** İlanı açan kullanıcının kimliği gövdeden (body) **değil**, doğrudan URL yol parametresinden (`{id}`) alınır.
+  * **Doğrulama ve Alan Kuralları (JobPosting Rules):**
+    * `title`: Zorunlu (`required`), en fazla 120 karakter (`max 120 characters`).
+    * `company`: Zorunlu (`required`).
+    * `city`: İsteğe bağlı (`optional`, boş bırakılabilir / `null`).
+    * `description`: İsteğe bağlı (`optional`, boş bırakılabilir / `null`).
   * **Yanıtlar:**
     * `201 Created` — İlan başarıyla oluşturuldu (oluşturulan ilan nesnesi gövdede döner).
     * `404 Not Found` — Verilen `{id}` değerine sahip kullanıcı veritabanında bulunamadı.
-    * `400 Bad Request` — Eksik veya geçersiz alanlar (başlık, şirket veya açıklama boş).
+    * `400 Bad Request` — Eksik veya geçersiz alanlar (`title` boş veya 120 karakterden uzun, ya da `company` boş).
 
 * **`GET /api/users/{id}/jobs`**
   * **İşlev:** Belirtilen kullanıcının açtığı tüm iş ilanlarını listeler.
@@ -320,9 +333,11 @@ namespace Alumni.Persistence.Configurations
             builder.HasKey(j => j.Id).HasName("pk_job_posts");
             builder.Property(j => j.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
-            builder.Property(j => j.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
+            // JobPosting kuralları: title required, max 120 chars; company required; city & description optional
+            builder.Property(j => j.Title).HasColumnName("title").HasMaxLength(120).IsRequired();
             builder.Property(j => j.Company).HasColumnName("company").HasMaxLength(200).IsRequired();
-            builder.Property(j => j.Description).HasColumnName("description").HasColumnType("text").IsRequired();
+            builder.Property(j => j.City).HasColumnName("city").HasMaxLength(100).IsRequired(false);
+            builder.Property(j => j.Description).HasColumnName("description").HasColumnType("text").IsRequired(false);
             builder.Property(j => j.PostedByUserId).HasColumnName("posted_by_user_id").IsRequired();
             builder.HasIndex(j => j.PostedByUserId).HasDatabaseName("ix_job_posts_posted_by_user_id");
 
@@ -411,9 +426,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_alumni_profiles_user_id ON alumni_profiles(
 -- 3. Job Posts Tablosu (1-to-N)
 CREATE TABLE IF NOT EXISTS job_posts (
     id SERIAL PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
+    title VARCHAR(120) NOT NULL,
     company VARCHAR(200) NOT NULL,
-    description TEXT NOT NULL,
+    city VARCHAR(100),
+    description TEXT,
     posted_by_user_id INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_job_posts_users FOREIGN KEY (posted_by_user_id) 

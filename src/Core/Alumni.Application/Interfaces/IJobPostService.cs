@@ -9,7 +9,7 @@ namespace Alumni.Application.Interfaces
         Task<List<JobPost>> GetAllAsync();
         Task<JobPost?> GetByIdAsync(int id);
         Task<List<JobPost>> GetByUserIdAsync(int userId);
-        Task<JobPost?> CreateForUserAsync(int userId, string title, string company, string description);
+        Task<JobPost?> CreateForUserAsync(int userId, string title, string company, string? city = null, string? description = null);
         Task<bool> DeleteAsync(int id);
     }
 }

@@ -48,7 +48,12 @@ namespace Alumni.API.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromForm] int postedByUserId, [FromForm] string title, [FromForm] string company, [FromForm] string description)
+        public async Task<IActionResult> Create(
+            [FromForm] int postedByUserId,
+            [FromForm] string title,
+            [FromForm] string company,
+            [FromForm] string? city,
+            [FromForm] string? description)
         {
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company) || postedByUserId <= 0)
             {
@@ -56,7 +61,13 @@ namespace Alumni.API.Controllers
                 return Redirect("/jobs");
             }
 
-            var created = await _jobPostService.CreateForUserAsync(postedByUserId, title, company, description ?? string.Empty);
+            if (title.Trim().Length > 120)
+            {
+                TempData["ErrorMessage"] = "İlan başlığı en fazla 120 karakter olabilir.";
+                return Redirect("/jobs");
+            }
+
+            var created = await _jobPostService.CreateForUserAsync(postedByUserId, title, company, city, description);
             if (created == null)
             {
                 TempData["ErrorMessage"] = "Seçilen kullanıcı bulunamadı.";

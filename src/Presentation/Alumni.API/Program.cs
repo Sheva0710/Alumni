@@ -1,4 +1,5 @@
 using Alumni.API.Common;
+using Alumni.API.Middlewares;
 using Alumni.Application.Interfaces;
 using Alumni.Persistence;
 using Alumni.Persistence.Data;
@@ -21,6 +22,18 @@ builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
+
+// Global Request Logger Middleware (Terminale formatlı log çıktısı)
+app.UseRequestLogging();
+
+// 5xx Guardian Middleware (500 ve 5xx sunucu hatalarını gerekçesiyle/reason ile döndürür)
+app.Use5xxGuardian();
+
+// 404 Guardian Middleware (404 hatalarını gerekçesiyle/reason ile döndürür)
+app.UseNotFoundGuardian();
+
+// The Bouncer Middleware (Yetkisiz veri değiştirme isteklerini kapıdan çevirir)
+app.UseBouncer();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -52,6 +65,11 @@ app.MapGet("/sum/{number1:double}/{number2:double}", (double number1, double num
 // About route: GET /about returns HTML about page
 app.MapGet("/about", () => Results.Content(StaticHtmlPages.GetAboutPageHtml(), "text/html")).WithTags("General");
 
+// 404 Route: GET /404 returns generic 404 HTML page (define generic 404 page)
+app.MapGet("/404", (string? path, string? reason) => 
+    Results.Content(StaticHtmlPages.GetNotFoundPageHtml(path, reason), "text/html", statusCode: StatusCodes.Status404NotFound))
+    .WithTags("General");
+
 // Health route: GET /api/health returns API health status
 app.MapGet("/api/health", () => 
 {
@@ -62,6 +80,12 @@ app.MapGet("/api/health", () =>
         service = "Alumni Tracking System API"
     });
 }).WithTags("Health");
+
+// Test 500 route: GET /api/test-500 (5xx Guardian Middleware test rotası)
+app.MapGet("/api/test-500", () =>
+{
+    throw new InvalidOperationException("5xx Guardian Testi: Sunucu tarafında beklenmeyen bir hata simüle edildi.");
+}).WithTags("Test");
 
 
 

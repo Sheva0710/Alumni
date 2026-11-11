@@ -1,0 +1,191 @@
+@{
+    ViewData["Title"] = "404 - Sayfa Bulunamadı";
+    var requestedPath = Context.Request.Query["path"].ToString();
+    if (string.IsNullOrWhiteSpace(requestedPath))
+    {
+        requestedPath = Context.Request.Path;
+    }
+    var reason = Context.Request.Query["reason"].ToString();
+    if (string.IsNullOrWhiteSpace(reason))
+    {
+        reason = "Aradığınız sayfa silinmiş, adı değiştirilmiş veya geçici olarak kullanım dışı kalmış olabilir.";
+    }
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] | Alumni Tracking System</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --text: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --danger: #EF4444;
+            --danger-bg: #FEF2F2;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: var(--card-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .logo {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .error-card {
+            background: var(--card-bg);
+            max-width: 620px;
+            width: 100%;
+            border-radius: 1rem;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .error-code {
+            font-size: 5.5rem;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--primary);
+            letter-spacing: -2px;
+            margin-bottom: 0.5rem;
+        }
+        .error-badge {
+            display: inline-block;
+            background: var(--danger-bg);
+            color: var(--danger);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+        h1 {
+            font-size: 1.75rem;
+            margin: 0 0 0.75rem 0;
+            color: var(--text);
+        }
+        p.lead {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin: 0 0 1.5rem 0;
+            line-height: 1.6;
+        }
+        .path-box {
+            background: #F3F4F6;
+            border: 1px dashed var(--border);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.9rem;
+            color: #374151;
+            word-break: break-all;
+        }
+        .reason-box {
+            background: #FFFBEB;
+            border-left: 4px solid #F59E0B;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 2rem;
+            text-align: left;
+            font-size: 0.875rem;
+            color: #92400E;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.925rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        .btn-secondary {
+            background: #F3F4F6;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: #E5E7EB;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">🎓 Alumni Tracking System</a>
+        <nav>
+            <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Ana Sayfa</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="error-card">
+            <div class="error-code">404</div>
+            <div class="error-badge">Sayfa Bulunamadı (Not Found)</div>
+            <h1>Aradığınız Sayfaya Ulaşılamadı</h1>
+            <p class="lead">Ulaşmaya çalıştığınız web adresi sunucuda bulunamadı veya taşınmış olabilir.</p>
+
+            <div class="path-box">
+                <strong>Hedef Rota:</strong> @requestedPath
+            </div>
+
+            <div class="reason-box">
+                <strong>Gerekçe:</strong> @reason
+            </div>
+
+            <div class="button-group">
+                <a href="/" class="btn btn-primary">🏠 Ana Sayfa</a>
+                <a href="/jobs" class="btn btn-secondary">💼 İş İlanları</a>
+                <a href="/users" class="btn btn-secondary">🎓 Mezunlar</a>
+                <a href="/announcements" class="btn btn-secondary">📢 Duyurular</a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+

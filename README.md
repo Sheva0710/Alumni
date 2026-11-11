@@ -19,6 +19,7 @@
 - [Geliştirme Metodolojisi](#-geliştirme-metodolojisi)
 - [Önerilen Sistem Mimarisi](#-önerilen-sistem-mimarisi)
 - [Proje Dizin Yapısı ve Dağıtılmış MVC Mimarisi](#-proje-dizin-yapısı-ve-dağıtılmış-mvc-mimarisi)
+- [HTTP Boru Hattı ve Middleware Mimarisi (The Bouncer & Guardians)](#-http-boru-hattı-ve-middleware-mimarisi-the-bouncer--guardians)
 - [Veritabanı ve Veri Tasarımı (Data Design)](#-veritabanı-ve-veri-tasarımı-data-design)
 - [Mevcut Uç Noktalar (Aktif Rotalar)](#-mevcut-uç-noktalar-aktif-rotalar)
 - [Kurulum ve Başlangıç](#-kurulum-ve-başlangıç)
@@ -107,30 +108,74 @@ Projemiz tek bir projeye sıkıştırılmış basit bir MVC (Model-View-Controll
 
 ```text
 Alumni/
+├── logs/
+│   └── error.logs                   -> [GÜVENLİK & İZLEME] Kalıcı hata, 404 ve güvenlik kayıtları
 ├── src/
 │   ├── Core/
-│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - User.cs, AlumniProfile.cs, JobPost.cs, Announcement.cs)
-│   │   └── Alumni.Application/      -> [MODEL] DTOs, CRUD Servis Arayüzleri (IUserService, IAnnouncementService)
+│   │   ├── Alumni.Domain/           -> [MODEL] Ana iş varlıkları (Entities - User.cs, AlumniProfile.cs, JobPost.cs, Application.cs, Announcement.cs)
+│   │   └── Alumni.Application/      -> [MODEL] DTOs, Validations, CRUD Servis Arayüzleri
 │   ├── Infrastructure/
 │   │   ├── Alumni.Infrastructure/   -> [ALTYAPI] Dış servis entegrasyonları
 │   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı (PostgreSQL, DbContext, Migrations, Seed & Factories, CRUD Servisleri)
 │   └── Presentation/
 │       └── Alumni.API/
-│           ├── Controllers/         -> [CONTROLLER] MVC (UserController, AnnouncementController) ve API (ApiUserController, ApiAnnouncementController)
-│           ├── Views/               -> [VIEW] Razor View arayüzleri (User: Index, Details, Edit | Announcement: Index, Details, Edit)
-│           ├── Program.cs           -> Uygulama başlangıç yapılandırması, DI ve Middleware
+│           ├── Controllers/         -> [CONTROLLER] MVC ve REST API controller'ları
+│           ├── Middlewares/         -> [MIDDLEWARE] RequestLogging, 5xxGuardian, 404Guardian, Bouncer
+│           ├── Common/              -> [YARDIMCI] StaticHtmlPages, FileErrorLogger
+│           ├── Views/               -> [VIEW] Razor View arayüzleri (User, JobPost, Application, Announcement, Shared/NotFound)
+│           ├── Program.cs           -> Boru hattı (Pipeline), DI, Middleware ve Rota kayıtları
 │           └── Dockerfile           -> API Konteyner inşası
 ├── docker-compose.yml               -> Proje orkestrasyonu
+├── DATA_DESIGN.md                   -> Veri modeli şartnamesi (Single Source of Truth)
 └── README.md
 ```
 
 - **Model (M):** Monolitik bir yapı yerine ikiye ayrılmıştır. `Alumni.Domain` veritabanı şemasını ve iş varlıklarını (Entity - `User.cs`, `AlumniProfile.cs`, `JobPost.cs`, `Announcement.cs`) tutarken, `Alumni.Application` veri transfer objelerini (DTO) ve CRUD servis arayüzlerini (`IUserService`, `IAnnouncementService`) yönetir. Veritabanı işlemleri `Alumni.Persistence` altındaki DbContext ve servisler üzerinden yürütülür.
 - **View (V):** İki farklı sunum katmanından oluşur:
-  1. **Razor HTML Views (`Views/`):** Sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Views/User/`) ve duyuru yönetim arayüzleri (`Views/Announcement/`).
-  2. **API & Dokümantasyon Arayüzü:** `/api/users` ve `/api/announcements` üzerinden dönülen JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
-- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında hem MVC hem de API controller'ları ile yönetilir:
-  1. `UserController` & `AnnouncementController`: Razor View sayfalarını ve form işlemlerini yöneten MVC controller'ları (`/users`, `/announcements`).
-  2. `ApiUserController` & `ApiAnnouncementController`: RESTful JSON API isteklerini yöneten API controller'ları (`/api/users`, `/api/announcements`).
+  1. **Razor HTML Views (`Views/`):** Sunucu taraflı (SSR) çalışan kullanıcı yönetim arayüzleri (`Views/User/`), duyuru arayüzleri (`Views/Announcement/`), iş ilanları (`Views/JobPost/`), başvurular (`Views/Application/`) ve genel hata arayüzü (`Views/Shared/NotFound.cshtml`).
+  2. **API & Dokümantasyon Arayüzü:** JSON veri çıktıları ve `/api/swagger` (Scalar) arayüzü.
+- **Controller (C):** `src/Presentation/Alumni.API/Controllers/` dizini altında hem MVC hem de API controller'ları ile yönetilir.
+
+---
+
+## 🛡️ HTTP Boru Hattı ve Middleware Mimarisi (The Bouncer & Guardians)
+
+7. Hafta (Ders rehberindeki 9. Hafta konusu: *Middleware — the bouncer*) kapsamında sisteme uçtan uca koruma, loglama ve hata denetimi sağlayan katmanlı middleware mimarisi kazandırılmıştır. İstekler controller'a varmadan önce ve yanıtlarken şu sırayla boru hattından (pipeline) geçer:
+
+```mermaid
+flowchart LR
+    A["HTTP İsteği"] --> B["1. RequestLoggingMiddleware"]
+    B --> C["2. ServerErrorGuardianMiddleware (5xx)"]
+    C --> D["3. NotFoundGuardianMiddleware (404)"]
+    D --> E["4. BouncerMiddleware (Auth/Header)"]
+    E --> F["Controllers & Endpoints"]
+    F --> E
+    E --> D
+    D --> C
+    C --> B
+    B --> G["HTTP Yanıtı"]
+```
+
+1. **`RequestLoggingMiddleware` (Giriş/Çıkış Zaman Sayacı & Terminal Logger):**
+   - Her gelen isteğin başlama ve bitiş anını `Stopwatch` ile milisaniye cinsinden ölçer.
+   - Terminale anlık şu formatta ham log düşer:  
+     `time , method , route , response type , duration` (Örn: `10:20:30 , POST , /users , 201 , 18ms`).
+2. **`ServerErrorGuardianMiddleware` (5xx Hata Koruyucusu):**
+   - Boru hattında yakalanmayan tüm beklenmeyen istisnaları (`Unhandled Exceptions`) ve 500-599 arası sunucu hatalarını yakalar.
+   - Hassas stack trace sızıntısını önler; istemciye gerekçeli (`reason`) standart JSON döner.
+   - Hatanın tam detaylarını ve StackTrace dökümünü `logs/error.logs` dosyasına kaydeder.
+   - Kolay test için `GET /api/test-500` simülasyon rotası mevcuttur.
+3. **`NotFoundGuardianMiddleware` (404 Rota & Kaynak Koruyucusu):**
+   - Sistemde bulunamayan tüm rota veya kayıt hatalarında devreye girer.
+   - Hatanın sebebini (`reason`) dinamik üretir (Tanımsız rota veya veri bulunamadı).
+   - **Akıllı Yönlendirme (Redirect Invalid Request):** Eğer istek bir tarayıcıdan (`text/html`) geliyorsa istemciyi otomatik olarak `/404` genel hata sayfasına yönlendirir (`HTTP 302 Redirect`). API isteklerinde ise yapılandırılmış JSON döner.
+   - 404 uyarılarını `logs/error.logs` dosyasına kalıcı olarak işler.
+4. **`BouncerMiddleware` (The Bouncer / Kapıdaki Güvenlik Fedaisi):**
+   - Korumalı API rotalarına yönelik veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetler.
+   - Geçerli bir güvenlik başlığı (`X-Api-Key`) taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`).
+5. **`FileErrorLogger` & `logs/error.logs` (Kalıcı Dosya Kaydı):**
+   - Eşzamanlı (concurrent) isteklerde dosya çakışmasını önlemek adına `SemaphoreSlim` ile thread-safe tasarlanmıştır.
+   - Tüm 5xx hatalarını, 404 uyarılarını ve güvenlik ihlallerini tarih/saat, IP, metot, rota ve gerekçesiyle saklar.
 
 ---
 
@@ -153,10 +198,12 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 |---|---|---|
 | `GET` | `/` | Web Vitrini / Ana Sayfa Prototipi |
 | `GET` | `/about` | Platform Misyonu ve Hakkında Sayfası |
+| `GET` | `/404` | Genel 404 Sayfa Arayüzü (HTML & Razor View) |
 | `GET` | `/hello` | Temel Çalışma Doğrulama Testi |
 | `GET` | `/hello/{name}` | Dinamik Route Parametresi Testi |
 | `GET` | `/sum/{n1}/{n2}` | Sayısal Hesaplama ve Parametre Doğrulama Testi |
 | `GET` | `/api/health` | API Sağlık Durumu |
+| `GET` | `/api/test-500` | 5xx Guardian Middleware Test Uç Noktası (Simüle İstisna) |
 | `GET` | `/users` | Kullanıcı Listeleme ve Ekleme Formu (MVC Razor View) |
 | `POST` | `/users` | Yeni Kullanıcı Ekleme (MVC Form POST) |
 | `GET` | `/users/details/{id}` | Kullanıcı Detay Görüntüleme (MVC View) |
@@ -297,6 +344,31 @@ docker compose up -d
   * **İş Başvuruları Yönetimi Arayüzü (`/applications`):** `ApplicationController` ve `Views/Application/Index.cshtml` geliştirildi. Tüm başvuruların statüleriyle (Applied, Reviewing, Interview, Accepted, Rejected) görüntülenmesi, durum güncelleme ve başvuru iptal formu sunuldu.
   * **Kullanıcı Detay Sayfası (`/users/details/{id}`):** Sayfa güncellenerek seçilen kullanıcının yayınladığı tüm iş ilanları (`Model.JobPosts`) listelendi (Ders notları Madde 8 şartı).
   * Ana sayfa (`/`) başlığına modüller arası hızlı geçiş sağlayan gezinme çubuğu (Navigation bar) eklendi.
+### Hafta 07 (Ders Rehberi 9. Hafta: Middleware — The Bouncer, Hata Koruyucuları ve Dosya Loglama)
+* **Postman ile Sınır Durum ve Geçersiz İsteklerin Sınanması:**
+  - Güvenlik ve hata middleware'leri devreye alınmadan önce Postman çalışma alanında var olmayan rotalar (`/api/users/9999`), hatalı veri yükleri ve geçersiz metotlar test edilerek sistemin ham yanıt davranışları analiz edildi.
+* **`DATA_DESIGN.md` ve C# Kodlarında `JobPosting` Kural Güncellemesi:**
+  - `JobPosting` şartnamesi güncellendi: `title` zorunlu ve en fazla 120 karakter, `company` zorunlu, `city` opsiyonel (maks. 100 karakter), `description` opsiyonel olarak belirlendi.
+  - `JobPost` domain entity'si, `CreateJobPostRequest` DTO'su, `IJobPostService` / `JobPostService` ve Fluent API (`JobPostConfiguration`) tanımları güncel kurallarla tam senkronize edildi.
+* **Logger Middleware (Giriş/Çıkış Zaman Sayacı & Terminal Logger):**
+  - Gelen her HTTP isteğini `Stopwatch` ile milisaniye hassasiyetinde ölçen [`RequestLoggingMiddleware`](./src/Presentation/Alumni.API/Middlewares/RequestLoggingMiddleware.cs) geliştirildi.
+  - İstenen formatta terminale anlık ham çıktı yazdırıldı:  
+    `time , method , route , response type , duration` (Örn: `10:20:30 , POST , /users , 201 , 18ms`).
+* **404 Guardian Middleware ("return 404 errors with a reason"):**
+  - Tanımsız rotalar veya veri tabanında bulunamayan kayıtlar için hatanın gerekçesini (`reason`) dinamik olarak üreten [`NotFoundGuardianMiddleware`](./src/Presentation/Alumni.API/Middlewares/NotFoundGuardianMiddleware.cs) yazıldı.
+* **5xx Guardian Middleware ("return 500/5xx errors with a reason"):**
+  - Uygulama içinde fırlatılan yakalanmamış tüm istisnaları (`Unhandled Exceptions`) ve 5xx durum kodlarını yakalayan [`ServerErrorGuardianMiddleware`](./src/Presentation/Alumni.API/Middlewares/ServerErrorGuardianMiddleware.cs) geliştirildi.
+  - Hassas stack trace sızıntısını engelleyerek kullanıcıya gerekçeli (`reason`) standart JSON hata gövdesi dönmesi sağlandı. Test için `GET /api/test-500` simülasyon rotası eklendi.
+* **Kalıcı Dosya Loglama Altyapısı (`logs/error.logs`):**
+  - Eşzamanlı (concurrent) isteklerde işletim sistemi dosya kilitlenme (`IOException`) hatasını önlemek için `SemaphoreSlim` tabanlı thread-safe ve asenkron [`FileErrorLogger`](./src/Presentation/Alumni.API/Common/FileErrorLogger.cs) servisi yazıldı.
+  - Tüm 5xx hataları, 404 uyarıları ve 401 yetki engellemeleri [`logs/error.logs`](./logs/error.logs) dosyasına tarih, IP, rota ve hata detaylarıyla kalıcı olarak kaydedildi.
+* **Genel 404 Sayfası ve Geçersiz İsteklerin Yönlendirilmesi ("define generic 404 page and redirect invalid request"):**
+  - Kullanıcı dostu, modern ve responsive genel 404 HTML şablonu ([`StaticHtmlPages.cs`](./src/Presentation/Alumni.API/Common/StaticHtmlPages.cs)) ve Razor View ([`Views/Shared/NotFound.cshtml`](./src/Presentation/Alumni.API/Views/Shared/NotFound.cshtml)) tanımlandı; `GET /404` rotasına bağlandı.
+  - `NotFoundGuardianMiddleware` üzerinde akıllı yönlendirme yapıldı: Tarayıcıdan (`text/html`) gelen geçersiz istekler otomatik olarak `HTTP 302 Redirect` ile `/404` sayfasına yönlendirilirken, API/Postman isteklerine doğrudan JSON hata yanıtı dönülmektedir.
+* **The Bouncer Middleware (Kapıdaki Güvenlik ve Yetki Fedaisi):**
+  - Dersin ana başlığı olan bouncer mantığıyla çalışan [`BouncerMiddleware`](./src/Presentation/Alumni.API/Middlewares/BouncerMiddleware.cs) geliştirildi.
+  - API üzerindeki veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetleyerek geçerli `X-Api-Key` başlığı taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`).
+
 
 
 

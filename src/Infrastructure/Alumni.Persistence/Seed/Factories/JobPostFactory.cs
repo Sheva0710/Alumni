@@ -17,11 +17,23 @@ namespace Alumni.Persistence.Seed.Factories
             int postedByUserId,
             DateTime? createdAt = null)
         {
+            return Create(title, company, null, description, postedByUserId, createdAt);
+        }
+
+        public static JobPost Create(
+            string title,
+            string company,
+            string? city,
+            string? description,
+            int postedByUserId,
+            DateTime? createdAt = null)
+        {
             return new JobPost
             {
                 Title = title.Trim(),
                 Company = company.Trim(),
-                Description = description.Trim(),
+                City = string.IsNullOrWhiteSpace(city) ? null : city.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
                 PostedByUserId = postedByUserId,
                 CreatedAt = createdAt ?? DateTime.UtcNow
             };
