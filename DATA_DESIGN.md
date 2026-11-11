@@ -2,7 +2,7 @@
 
 > **Doküman Türü:** Veri Modeli ve Veritabanı Mimari Şartnamesi (Data Design Specification / ddd.md)  
 > **Teknoloji Yığını:** PostgreSQL 16 (`docker-compose` persistent volume: `postgres_data`) & Entity Framework Core (EF Core)  
-> **Sürüm:** v1.2 (7. Hafta: JobPosting Validasyon Kuralları ve Şema Güncellemesi)  
+> **Sürüm:** v1.3 (7. Hafta: Domain-Driven Design (DDD) İş Kuralları, İlan & Başvuru Değişmezleri ve Doğrulama Şartnamesi)  
 > **Durum:** Aktif / Single Source of Truth (SSOT)
 
 ---
@@ -51,12 +51,14 @@ erDiagram
         string current_company "VARCHAR(200) NULL"
         string current_title "VARCHAR(150) NULL"
         string linkedin_url "VARCHAR(500) NULL"
+        boolean is_verified "BOOLEAN NOT NULL DEFAULT FALSE"
     }
 
     JOB_POSTS {
         int id PK "SERIAL / IDENTITY"
         string title "VARCHAR(120) NOT NULL"
         string company "VARCHAR(200) NOT NULL"
+        string workplace_type "VARCHAR(20) NOT NULL DEFAULT 'OnSite'"
         string city "VARCHAR(100) NULL"
         text description "TEXT NULL"
         int posted_by_user_id FK "INT NOT NULL"
@@ -77,6 +79,7 @@ erDiagram
         text content "TEXT NOT NULL"
         string author "VARCHAR(100) NOT NULL"
         boolean is_active "BOOLEAN NOT NULL DEFAULT TRUE"
+        timestamptz end_date "TIMESTAMPTZ NULL"
         timestamptz created_at "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
     }
 ```
@@ -109,10 +112,11 @@ Mezun rolündeki kullanıcılara ait akademik geçmiş ve profesyonel kariyer de
 | `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | Profil benzersiz tanımlayıcısı |
 | `user_id` | `UserId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `UNIQUE` | Bağlı olduğu `Users.Id` (1-e-1 ilişki) |
 | `department` | `Department` | `VARCHAR(150)` | `string` | **Hayır** | `NOT NULL` | Mezun olunan üniversite bölümü |
-| `graduation_year`| `GraduationYear`| `INTEGER` | `int` | **Hayır** | `CHECK (1950 - 2100)` | Mezuniyet yılı |
+| `graduation_year`| `GraduationYear`| `INTEGER` | `int` | **Hayır** | `CHECK (1950 - 2100)` | Mezuniyet yılı (Öğrenci/Mezun ayrımı mantığı) |
 | `current_company`| `CurrentCompany`| `VARCHAR(200)` | `string?` | Evet | — | Şu an çalışılan kurum/şirket |
 | `current_title` | `CurrentTitle` | `VARCHAR(150)` | `string?` | Evet | — | Şu anki pozisyon/unvan |
-| `linkedin_url` | `LinkedInUrl` | `VARCHAR(500)` | `string?` | Evet | Format doğrulaması | LinkedIn profil bağlantısı |
+| `linkedin_url` | `LinkedInUrl` | `VARCHAR(500)` | `string?` | Evet | URL Format Doğrulaması | LinkedIn profil bağlantısı (`https://linkedin.com/in/...`) |
+| `is_verified` | `IsVerified` | `BOOLEAN` | `bool` | **Hayır** | `DEFAULT FALSE` | Profil onay durumu (Yalnızca onaylı mezunlar ilan açabilir) |
 
 ---
 
@@ -124,7 +128,8 @@ Kullanıcılar veya kariyer merkezi tarafından paylaşılan iş/staj ilanların
 | `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | İlan benzersiz tanımlayıcısı |
 | `title` | `Title` | `VARCHAR(120)` | `string` | **Hayır** | `NOT NULL`, `MAXLENGTH(120)` | İlan başlığı (Zorunlu, maks. 120 karakter) |
 | `company` | `Company` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | İlanı veren firma adı (Zorunlu) |
-| `city` | `City` | `VARCHAR(100)` | `string?` | **Evet** | `NULL` | İlan lokasyonu / şehir (İsteğe bağlı, Örn: 'İstanbul', 'Remote') |
+| `workplace_type`| `WorkplaceType`| `VARCHAR(20)` | `string` | **Hayır** | `DEFAULT 'OnSite'` | Çalışma modeli (`'Remote'`, `'Hybrid'`, `'OnSite'`) |
+| `city` | `City` | `VARCHAR(100)` | `string?` | **Koşullu** | Koşullu Validasyon | Lokasyon / Şehir (`OnSite`/`Hybrid` ise zorunlu; `Remote` ise opsiyonel) |
 | `description` | `Description` | `TEXT` | `string?` | **Evet** | `NULL` | İlan detayları, açıklaması (İsteğe bağlı) |
 | `posted_by_user_id` | `PostedByUserId` | `INTEGER` | `int` | **Hayır (FK)** | `FOREIGN KEY`, `INDEX` | İlanı açan kullanıcı (`Users.Id`). Var olmayan kullanıcıya ilan açılamaz! |
 | `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | İlan paylaşım zamanı (UTC) |
@@ -132,8 +137,10 @@ Kullanıcılar veya kariyer merkezi tarafından paylaşılan iş/staj ilanların
 > 📌 **JobPosting Alan ve Doğrulama Kuralları:**
 > - `Title`: Zorunlu alan (`required`), en fazla 120 karakter (`max 120 characters`).
 > - `Company`: Zorunlu alan (`required`).
-> - `City`: İsteğe bağlı (`optional`), en fazla 100 karakter.
+> - `WorkplaceType`: Zorunlu alan, geçerli değerler: `Remote`, `Hybrid`, `OnSite` (Varsayılan: `OnSite`).
+> - `City`: Çalışma modeline bağlı koşullu alan (`OnSite` ve `Hybrid` ise **zorunlu**, `Remote` ise **isteğe bağlı/boş**).
 > - `Description`: İsteğe bağlı (`optional`), detaylı metin.
+> - 🚫 **Self-Application Invariant:** İlanı açan kullanıcı (`posted_by_user_id`), kendi açtığı ilana başvuru yapamaz (`user_id != posted_by_user_id`).
 
 ---
 
@@ -150,6 +157,21 @@ Kullanıcıların iş ilanlarına yaptığı başvuruları tutar (Many-to-Many �
 
 > 🔒 **Tekil Çift Kuralı (Unique Pair Constraint):**  
 > `UNIQUE (user_id, job_post_id)` kısıtlaması sayesinde aynı kullanıcı aynı ilana **yalnızca bir kez** başvurabilir. Mükerrer başvuru durumunda veritabanı kısıt hatası verir, API katmanı **`409 Conflict`** yanıtı döner.
+
+---
+
+### 3.5 `Announcements` Tablosu (`announcements`)
+Platform yöneticileri ve kariyer ofisi tarafından paylaşılan kurumsal duyuruları barındırır.
+
+| Sütun Adı (DB) | C# Özellik Adı | Veri Tipi (PostgreSQL) | C# Tipi | Boş Olabilir? | Kısıt / İndeks | Açıklama |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `id` | `Id` | `SERIAL` / `INTEGER` | `int` | **Hayır (PK)** | `PRIMARY KEY` | Duyuru benzersiz tanımlayıcısı |
+| `title` | `Title` | `VARCHAR(200)` | `string` | **Hayır** | `NOT NULL` | Duyuru başlığı |
+| `content` | `Content` | `TEXT` | `string` | **Hayır** | `NOT NULL` | Duyuru metni / içeriği |
+| `author` | `Author` | `VARCHAR(100)` | `string` | **Hayır** | `NOT NULL` | Duyuruyu yayınlayan yetkili |
+| `is_active` | `IsActive` | `BOOLEAN` | `bool` | **Hayır** | `DEFAULT TRUE` | Duyuru yayında mı? |
+| `end_date` | `EndDate` | `TIMESTAMPTZ` | `DateTime?` | Evet | `CHECK (end_date >= created_at)` | Duyuru geçerlilik / bitiş tarihi |
+| `created_at` | `CreatedAt` | `TIMESTAMPTZ` | `DateTime` | **Hayır** | `DEFAULT NOW()` | Duyuru oluşturulma tarihi (UTC) |
 
 ---
 
@@ -205,6 +227,9 @@ Kullanıcıların iş ilanlarına yaptığı başvuruları tutar (Many-to-Many �
 | `applications` | `ix_applications_user_id` | `user_id` | `INDEX` | Bir kullanıcının yaptığı başvuruları getirme |
 | `applications` | `ix_applications_job_post_id` | `job_post_id` | `INDEX` | Bir ilana gelen başvuruları getirme |
 | `applications` | `chk_applications_status` | `status` | `CHECK` | Geçerli durum kodları kontrolü (`Applied`, `Reviewing`, `Interview`, `Accepted`, `Rejected`) |
+| `job_posts` | `chk_job_posts_workplace` | `workplace_type` | `CHECK` | Çalışma modeli geçerliliği (`'Remote'`, `'Hybrid'`, `'OnSite'`) |
+| `announcements` | `pk_announcements` | `id` | `PRIMARY KEY` | Duyuru anahtarı |
+| `announcements` | `chk_announcements_dates` | `end_date`, `created_at` | `CHECK` | Bitiş tarihinin başlangıçtan sonra olması (`end_date >= created_at`) |
 
 ---
 
@@ -216,15 +241,18 @@ Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager lo
 * **`POST /api/users/{id}/jobs`**
   * **İşlev:** Belirtilen kullanıcı adına yeni bir iş ilanı oluşturur.
   * **Önemli Kural:** İlanı açan kullanıcının kimliği gövdeden (body) **değil**, doğrudan URL yol parametresinden (`{id}`) alınır.
+  * **Yetki Kuralı (Verified Alumni):** Yalnızca profili onaylanmış (`is_verified = true`) mezunlar iş ilanı açabilir (Onaysız profiller için `403 Forbidden`).
   * **Doğrulama ve Alan Kuralları (JobPosting Rules):**
     * `title`: Zorunlu (`required`), en fazla 120 karakter (`max 120 characters`).
     * `company`: Zorunlu (`required`).
-    * `city`: İsteğe bağlı (`optional`, boş bırakılabilir / `null`).
+    * `workplaceType`: Zorunlu (`'Remote'`, `'Hybrid'`, `'OnSite'`).
+    * `city`: Koşullu alan (`OnSite` veya `Hybrid` ise zorunlu; `Remote` ise opsiyonel / `null`).
     * `description`: İsteğe bağlı (`optional`, boş bırakılabilir / `null`).
   * **Yanıtlar:**
     * `201 Created` — İlan başarıyla oluşturuldu (oluşturulan ilan nesnesi gövdede döner).
+    * `400 Bad Request` — Eksik veya geçersiz alanlar (`title` boş veya >120 karakter; `company` boş; `OnSite`/`Hybrid` iken `city` boş).
+    * `403 Forbidden` — Kullanıcı profili onaylanmamış (`is_verified = false`).
     * `404 Not Found` — Verilen `{id}` değerine sahip kullanıcı veritabanında bulunamadı.
-    * `400 Bad Request` — Eksik veya geçersiz alanlar (`title` boş veya 120 karakterden uzun, ya da `company` boş).
 
 * **`GET /api/users/{id}/jobs`**
   * **İşlev:** Belirtilen kullanıcının açtığı tüm iş ilanlarını listeler.
@@ -263,10 +291,14 @@ Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager lo
 ### 6.2 Başvuru Yönlendirmeleri (Applications Routes)
 * **`POST /api/jobs/{id}/applications`**
   * **İşlev:** Belirtilen iş ilanına bir kullanıcı adına başvuru yapar (`{ "userId": 3 }`).
+  * **Domain Kuralları:**
+    * 🚫 **Kendi İlanına Başvuramama (Self-Application):** Eğer `userId == job.postedByUserId` ise başvuru reddedilir ve **`400 Bad Request`** döner.
+    * 🔒 **Mükerrer Başvuru Engeli:** Aynı ilana ikinci kez başvurulamaz (`UNIQUE(user_id, job_post_id)` -> **`409 Conflict`**).
   * **Yanıtlar:**
     * `201 Created` — Başvuru başarıyla alındı.
+    * `400 Bad Request` — Kendi açtığı ilana başvuru girişimi veya geçersiz kullanıcı ID.
     * `404 Not Found` — İlan (`{id}`) veya başvuran kullanıcı (`userId`) veritabanında yok.
-    * `409 Conflict` — **Mükerrer Başvuru:** Bu kullanıcı bu ilana daha önce başvurmuş (`UNIQUE (user_id, job_post_id)`).
+    * `409 Conflict` — **Mükerrer Başvuru:** Bu kullanıcı bu ilana daha önce başvurmuş.
 
 * **`GET /api/jobs/{id}/applications`**
   * **İşlev:** Bir ilana başvuran tüm adayların ve başvuru tarihlerinin listesini döner.
@@ -276,7 +308,61 @@ Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager lo
 
 ---
 
-## 7. ⚙️ Entity Framework Core (EF Core) Fluent API Konfigürasyon Taslağı
+## 7. 🧠 Domain-Driven Design (DDD) İş Kuralları ve Domain Değişmezleri (Business Rules & Domain Invariants)
+
+Domain-Driven Design (DDD) prensipleri gereğince, veritabanı kısıtları ve iş mantığı yalnızca basit veri tiplerinden ibaret değildir. Sistem bütünlüğünü, veri güvenilirliğini ve iş akışlarını garanti altına alan kurallar aşağıda kategorize edilmiştir:
+
+### 7.1 Kategori 1: İş İlanı (`JobPosting`) Domain Kuralları
+
+1. **Kendi İlanına Başvuramama Değişmezi (*Self-Application Invariant*):**
+   * **İş Kuralı:** İlanı açan mezun veya kurum kullanıcısı (`posted_by_user_id`), kendi oluşturduğu iş ilanına aday olarak başvuru yapamaz (`user_id != posted_by_user_id`).
+   * **Davranış & HTTP Yanıtı:** İstek servis/controller katmanında yakalanır, veritabanına yazılmadan engellenir ve **`400 Bad Request`** (`"Kendi yayınladığınız iş ilanına başvuru yapamazsınız."`) dönülür.
+   * **DDD Gerekçesi:** Aday ve İlan Sahibi rolleri aynı Aggregate üzerinde çelişki üretir ve başvuru metriklerini manipüle eder.
+
+2. **Çalışma Modeline Göre Koşullu Şehir Kuralı (*Conditional City Rule & WorkplaceType*):**
+   * **İş Kuralı:** İlanlar için çalışma modeli alanı (`workplace_type`) zorunludur ve `Remote`, `Hybrid`, `OnSite` değerlerini alabilir (Varsayılan: `OnSite`).
+   * **Koşullu Doğrulama (Conditional Validation):**
+     * Eğer `workplace_type` **`OnSite`** (İş yerinde) veya **`Hybrid`** (Karma) olarak seçilmişse, adayların lokasyonunu belirlemek adına `city` (şehir) alanı **zorunludur** (`required`).
+     * Eğer `workplace_type` **`Remote`** (Uzaktan) olarak seçilmişse, fiziksel bir ofis zorunluluğu olmadığından `city` alanı **isteğe bağlıdır** (`null` bırakılabilir).
+   * **Davranış:** `OnSite` veya `Hybrid` olup `city` girilmediğinde **`400 Bad Request`** döner.
+
+---
+
+### 7.2 Kategori 2: Başvuru (`Application`) Süreç Kuralları
+
+1. **Tekil Çift ve Mükerrer Başvuru Engeli (*Unique Pair Constraint*):**
+   * **İş Kuralı:** Bir aday kullanıcı (`user_id`), aynı iş ilanına (`job_post_id`) yalnızca bir kez başvuru yapabilir.
+   * **Uygulama:** Veritabanı seviyesinde `UNIQUE (user_id, job_post_id)` kısıtlaması, API seviyesinde ön kontrol.
+   * **Davranış & HTTP Yanıtı:** Kullanıcı daha önce başvurduğu ilana yeniden başvurmak istediğinde işlem reddedilir ve **`409 Conflict`** (`"Bu ilana daha önce başvuru yaptınız."`) döner.
+
+---
+
+### 7.3 Kategori 3: Mezun Profili (`AlumniProfile`) & Kullanıcı Kuralları
+
+1. **Doğrulanmış Mezun İlan Açma Şartı (*Verified Alumni Only*):**
+   * **İş Kuralı:** Yalnızca yönetici veya kariyer ofisi tarafından doğrulanmış (`is_verified = true`) mezun kullanıcılar sisteme yeni iş ilanı ekleyebilir.
+   * **Davranış & HTTP Yanıtı:** Doğrulanmamış (`is_verified = false`) bir profil üzerinden `POST /api/users/{id}/jobs` çağrıldığında sistem işlemi reddeder ve **`403 Forbidden`** (`"Yalnızca doğrulanmış mezun profilleri iş ilanı açabilir."`) yanıtı döner.
+
+2. **Gelecek Tarihli Mezuniyet Mantığı (*Student vs Alumni Distinction*):**
+   * **İş Kuralı:** Profildeki `graduation_year` değeri içinde bulunulan takvim yılından (`DateTime.UtcNow.Year`) büyükse kullanıcı statüsü otomatik olarak **"Öğrenci / Aday Mezun" (Student)**; eşit veya geçmiş bir yıl ise **"Mezun" (Alumni)** kabul edilir.
+   * **Sınır Kuralı:** `graduation_year` değeri `1950` ile `2100` aralığında olmak zorundadır (`CHECK` kısıtı).
+
+3. **LinkedIn Profil URL Format Doğrulaması (*URL Format Validation*):**
+   * **İş Kuralı:** `linkedin_url` alanı boş bırakılabilir (opsiyonel); ancak doldurulduğunda geçerli bir URL formatında olmalı ve mutlaka `https://www.linkedin.com/in/` veya `https://linkedin.com/in/` ile başlamalıdır.
+   * **Davranış:** Geçersiz veya bozuk URL girildiğinde model validasyonu devreye girer ve **`400 Bad Request`** döner.
+
+---
+
+### 7.4 Kategori 4: Duyurular (`Announcement`) Kuralları
+
+1. **Geçerlilik ve Bitiş Tarihi Kuralı (*Date Validity Constraint*):**
+   * **İş Kuralı:** Bir duyuru için opsiyonel bitiş / yayından kalkma tarihi (`end_date`) tanımlanabilir.
+   * **Tarih Sıralama Kısıtı:** Duyurunun bitiş tarihi (`end_date`), oluşturulma veya yayınlanma tarihinden (`created_at`) önce olamaz (`CHECK (end_date IS NULL OR end_date >= created_at)`).
+   * **Aktiflik Kuralı:** Eğer `is_active = false` ise veya `end_date` geçmiş bir tarihi gösteriyorsa, duyuru ana sayfada ve aktif duyuru listelerinde görüntülenmez.
+
+---
+
+## 8. ⚙️ Entity Framework Core (EF Core) Fluent API Konfigürasyon Taslağı
 
 ```csharp
 using Alumni.Domain.Entities;
@@ -333,9 +419,10 @@ namespace Alumni.Persistence.Configurations
             builder.HasKey(j => j.Id).HasName("pk_job_posts");
             builder.Property(j => j.Id).HasColumnName("id").ValueGeneratedOnAdd();
 
-            // JobPosting kuralları: title required, max 120 chars; company required; city & description optional
+            // JobPosting kuralları: title required, max 120 chars; company required; workplace_type required; city & description optional
             builder.Property(j => j.Title).HasColumnName("title").HasMaxLength(120).IsRequired();
             builder.Property(j => j.Company).HasColumnName("company").HasMaxLength(200).IsRequired();
+            builder.Property(j => j.WorkplaceType).HasColumnName("workplace_type").HasMaxLength(20).IsRequired().HasDefaultValue("OnSite");
             builder.Property(j => j.City).HasColumnName("city").HasMaxLength(100).IsRequired(false);
             builder.Property(j => j.Description).HasColumnName("description").HasColumnType("text").IsRequired(false);
             builder.Property(j => j.PostedByUserId).HasColumnName("posted_by_user_id").IsRequired();
@@ -391,7 +478,7 @@ namespace Alumni.Persistence.Configurations
 
 ---
 
-## 8. 🐘 PostgreSQL 16 DDL Şema Karşılığı (Reference SQL)
+## 9. 🐘 PostgreSQL 16 DDL Şema Karşılığı (Reference SQL)
 
 ```sql
 -- 1. Users Tablosu
@@ -416,6 +503,7 @@ CREATE TABLE IF NOT EXISTS alumni_profiles (
     current_company VARCHAR(200),
     current_title VARCHAR(150),
     linkedin_url VARCHAR(500),
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_alumni_profiles_users FOREIGN KEY (user_id) 
         REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT chk_alumni_profiles_grad_year CHECK (graduation_year >= 1950 AND graduation_year <= 2100)
@@ -428,12 +516,14 @@ CREATE TABLE IF NOT EXISTS job_posts (
     id SERIAL PRIMARY KEY,
     title VARCHAR(120) NOT NULL,
     company VARCHAR(200) NOT NULL,
+    workplace_type VARCHAR(20) NOT NULL DEFAULT 'OnSite',
     city VARCHAR(100),
     description TEXT,
     posted_by_user_id INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_job_posts_users FOREIGN KEY (posted_by_user_id) 
-        REFERENCES users(id) ON DELETE RESTRICT
+        REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_job_posts_workplace CHECK (workplace_type IN ('Remote', 'Hybrid', 'OnSite'))
 );
 
 CREATE INDEX IF NOT EXISTS ix_job_posts_posted_by_user_id ON job_posts(posted_by_user_id);
@@ -456,15 +546,27 @@ CREATE TABLE IF NOT EXISTS applications (
 CREATE UNIQUE INDEX IF NOT EXISTS ix_applications_user_id_job_post_id ON applications(user_id, job_post_id);
 CREATE INDEX IF NOT EXISTS ix_applications_user_id ON applications(user_id);
 CREATE INDEX IF NOT EXISTS ix_applications_job_post_id ON applications(job_post_id);
+
+-- 5. Announcements Tablosu
+CREATE TABLE IF NOT EXISTS announcements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    end_date TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_announcements_dates CHECK (end_date IS NULL OR end_date >= created_at)
+);
 ```
 
 ---
 
-## 9. 🌱 Factory ve Tohumlama (Seed) İdempotensi Stratejisi
+## 10. 🌱 Factory ve Tohumlama (Seed) İdempotensi Stratejisi
 
 Tohumlama betiği ardışık iki kez çalıştırıldığında hata vermemeli ve veri bütünlüğünü bozmamalıdır (**idempotency**).
 
-### 9.1 Sıralı Temizleme (Table Emptying & Sequence Reset)
+### 10.1 Sıralı Temizleme (Table Emptying & Sequence Reset)
 Yeni bir tohumlama yapılmadan önce veya test başlatılırken tablolar yabancı anahtar hiyerarşisine ters sırada temizlenir ve kimlik sayaçları (identity sequences) sıfırlanır:
 1. `applications` silinir (en alttaki bağımlı join tablo)
 2. `job_posts` silinir
@@ -472,7 +574,7 @@ Yeni bir tohumlama yapılmadan önce veya test başlatılırken tablolar yabanc�
 4. `users` silinir
 5. `announcements` silinir
 
-### 9.2 Sıralı Yükleme (Hierarchical Insertion)
+### 10.2 Sıralı Yükleme (Hierarchical Insertion)
 1. **`UserFactory`**: Temel kullanıcılar (`Ada Lovelace`, `Can Ozturk`, `Elif Kaya` vb.) üretilir ve `users` tablosuna kaydedilerek kalıcı `id`'leri alınır.
 2. **`AlumniProfileFactory`**: Üretilen kullanıcıların `id`'leri kullanılarak mezun profilleri bağlanır.
 3. **`JobPostFactory`**: Kullanıcıların `id`'leri atanarak iş ilanları (`Backend Intern`, `Data Analyst`, `QA Tester`) oluşturulur.
@@ -480,7 +582,7 @@ Yeni bir tohumlama yapılmadan önce veya test başlatılırken tablolar yabanc�
 
 ---
 
-## 10. 🤖 AI & Antigravity Assistant Directive (Data Single Source of Truth)
+## 11. 🤖 AI & Antigravity Assistant Directive (Data Single Source of Truth)
 
 > [!IMPORTANT]
 > **AI / Antigravity Assistant Directive (Data Single Source of Truth):**  
