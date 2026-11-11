@@ -141,6 +141,7 @@ Kullanıcılar veya kariyer merkezi tarafından paylaşılan iş/staj ilanların
 > - `City`: Çalışma modeline bağlı koşullu alan (`OnSite` ve `Hybrid` ise **zorunlu**, `Remote` ise **isteğe bağlı/boş**).
 > - `Description`: İsteğe bağlı (`optional`), detaylı metin.
 > - 🚫 **Self-Application Invariant:** İlanı açan kullanıcı (`posted_by_user_id`), kendi açtığı ilana başvuru yapamaz (`user_id != posted_by_user_id`).
+> - 🔢 **Aktif İlan Kotası (Max Quota):** Bir kullanıcı aynı anda en fazla **10 adet aktif iş/staj ilanı** yayınlayabilir.
 
 ---
 
@@ -248,9 +249,10 @@ Hafta 06 kapsamında uygulanacak iç içe yönlendirme (nested routes), eager lo
     * `workplaceType`: Zorunlu (`'Remote'`, `'Hybrid'`, `'OnSite'`).
     * `city`: Koşullu alan (`OnSite` veya `Hybrid` ise zorunlu; `Remote` ise opsiyonel / `null`).
     * `description`: İsteğe bağlı (`optional`, boş bırakılabilir / `null`).
+    * `quota`: Kullanıcının halihazırda en fazla 10 aktif ilanı olabilir.
   * **Yanıtlar:**
     * `201 Created` — İlan başarıyla oluşturuldu (oluşturulan ilan nesnesi gövdede döner).
-    * `400 Bad Request` — Eksik veya geçersiz alanlar (`title` boş veya >120 karakter; `company` boş; `OnSite`/`Hybrid` iken `city` boş).
+    * `400 Bad Request` — Eksik veya geçersiz alanlar (`title` boş veya >120 karakter; `company` boş; `OnSite`/`Hybrid` iken `city` boş; veya **10 aktif ilan kotası aşımı**).
     * `403 Forbidden` — Kullanıcı profili onaylanmamış (`is_verified = false`).
     * `404 Not Found` — Verilen `{id}` değerine sahip kullanıcı veritabanında bulunamadı.
 
@@ -325,6 +327,11 @@ Domain-Driven Design (DDD) prensipleri gereğince, veritabanı kısıtları ve i
      * Eğer `workplace_type` **`OnSite`** (İş yerinde) veya **`Hybrid`** (Karma) olarak seçilmişse, adayların lokasyonunu belirlemek adına `city` (şehir) alanı **zorunludur** (`required`).
      * Eğer `workplace_type` **`Remote`** (Uzaktan) olarak seçilmişse, fiziksel bir ofis zorunluluğu olmadığından `city` alanı **isteğe bağlıdır** (`null` bırakılabilir).
    * **Davranış:** `OnSite` veya `Hybrid` olup `city` girilmediğinde **`400 Bad Request`** döner.
+
+3. **Maksimum Aktif İlan Kotası (*Active Job Post Quota Limit*):**
+   * **İş Kuralı:** Bir mezun veya kurum kullanıcısı platformda aynı anda en fazla **10 adet aktif iş/staj ilanı** barındırabilir.
+   * **Davranış & HTTP Yanıtı:** Kullanıcının mevcut aktif ilan sayısı 10 iken yeni bir ilan açma isteği (`POST /api/users/{id}/jobs`) gönderilirse sistem işlemi reddeder ve **`400 Bad Request`** (`"Maksimum aktif ilan limitine (10) ulaştınız. Yeni bir ilan açmak için lütfen eski veya kapanmış ilanlarınızı kaldırınız."`) yanıtı döner.
+   * **DDD & Sistem Bütünlüğü Gerekçesi:** Platformun spam ve otomatik bot saldırılarıyla ilan çöplüğüne dönüşmesini engeller; veritabanında güncelliğini yitirmiş ölü kayıtların birikmesini önleyerek kullanıcıyı ilan hijyenine teşvik eder.
 
 ---
 
