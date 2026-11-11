@@ -104,28 +104,6 @@ namespace Alumni.API.Middlewares
                         }
                     }
 
-                    // Standart 404 Guardian Yanıtı (Sebep içeren JSON gövdesi)
-                    context.Response.ContentType = "application/json";
-
-                    var responsePayload = new
-                    {
-                        status = 404,
-                        error = "Not Found",
-                        reason = reason,
-                        path = path,
-                        method = method,
-                        timestamp = DateTime.UtcNow
-                    };
-
-                    var jsonString = JsonSerializer.Serialize(responsePayload, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = true
-                    });
-
-                    var responseBytes = Encoding.UTF8.GetBytes(jsonString);
-                    context.Response.ContentLength = responseBytes.Length;
-
                     _logger.LogWarning("🛡️ 404 Guardian: {Method} {Path} -> Reason: {Reason}", method, path, reason);
 
                     // logs/error.logs dosyasına kalıcı 404 uyarısı yazma
@@ -150,6 +128,28 @@ namespace Alumni.API.Middlewares
                         context.Response.Redirect(redirectUrl);
                         return;
                     }
+
+                    // Standart 404 Guardian Yanıtı (Sebep içeren JSON gövdesi)
+                    context.Response.ContentType = "application/json";
+
+                    var responsePayload = new
+                    {
+                        status = 404,
+                        error = "Not Found",
+                        reason = reason,
+                        path = path,
+                        method = method,
+                        timestamp = DateTime.UtcNow
+                    };
+
+                    var jsonString = JsonSerializer.Serialize(responsePayload, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        WriteIndented = true
+                    });
+
+                    var responseBytes = Encoding.UTF8.GetBytes(jsonString);
+                    context.Response.ContentLength = responseBytes.Length;
 
                     await originalBodyStream.WriteAsync(responseBytes);
                     return;

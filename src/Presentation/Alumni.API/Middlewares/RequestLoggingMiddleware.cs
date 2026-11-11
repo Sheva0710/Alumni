@@ -5,8 +5,8 @@ namespace Alumni.API.Middlewares
 {
     /// <summary>
     /// Gelen her HTTP isteğini terminale formatlanmış olarak loglayan Middleware.
-    /// Format: time , method , route , response type , duration
-    /// Örnek: 10:20:30 , POST , /users , 201 , 18ms
+    /// Format: time method route response type duration
+    /// Örnek: 10:20:30 POST /users 201 18ms
     /// </summary>
     public class RequestLoggingMiddleware
     {
@@ -37,8 +37,8 @@ namespace Alumni.API.Middlewares
                 var statusCode = context.Response.StatusCode;
                 var duration = $"{stopwatch.ElapsedMilliseconds}ms";
 
-                // Format: time , method , route , response type , duration
-                var logLine = $"{time} , {method} , {route} , {statusCode} , {duration}";
+                // Format: time method route response type duration (Tahta örneği: 10:20:30 Post /user 201 18ms)
+                var logLine = $"{time} {method} {route} {statusCode} {duration}";
 
                 // Terminale doğrudan ham çıktı yazdırma (Görev gereksinimi)
                 Console.WriteLine(logLine);

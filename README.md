@@ -159,7 +159,7 @@ flowchart LR
 1. **`RequestLoggingMiddleware` (Giriş/Çıkış Zaman Sayacı & Terminal Logger):**
    - Her gelen isteğin başlama ve bitiş anını `Stopwatch` ile milisaniye cinsinden ölçer.
    - Terminale anlık şu formatta ham log düşer:  
-     `time , method , route , response type , duration` (Örn: `10:20:30 , POST , /users , 201 , 18ms`).
+     `time method route response type duration` (Örn: `10:20:30 POST /users 201 18ms`).
 2. **`ServerErrorGuardianMiddleware` (5xx Hata Koruyucusu):**
    - Boru hattında yakalanmayan tüm beklenmeyen istisnaları (`Unhandled Exceptions`) ve 500-599 arası sunucu hatalarını yakalar.
    - Hassas stack trace sızıntısını önler; istemciye gerekçeli (`reason`) standart JSON döner.
@@ -172,7 +172,7 @@ flowchart LR
    - 404 uyarılarını `logs/error.logs` dosyasına kalıcı olarak işler.
 4. **`BouncerMiddleware` (The Bouncer / Kapıdaki Güvenlik Fedaisi):**
    - Korumalı API rotalarına yönelik veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetler.
-   - Geçerli bir güvenlik başlığı (`X-Api-Key`) taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`).
+   - Geçerli bir güvenlik başlığı (`X-Api-Key`) taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`). Postman ve otomatik testlerin kesintiye uğramaması adına `appsettings.json` içinde varsayılan olarak kapalıdır (`Enabled: false`), istendiğinde aktif edilebilir.
 5. **`FileErrorLogger` & `logs/error.logs` (Kalıcı Dosya Kaydı):**
    - Eşzamanlı (concurrent) isteklerde dosya çakışmasını önlemek adına `SemaphoreSlim` ile thread-safe tasarlanmıştır.
    - Tüm 5xx hatalarını, 404 uyarılarını ve güvenlik ihlallerini tarih/saat, IP, metot, rota ve gerekçesiyle saklar.
@@ -353,7 +353,7 @@ docker compose up -d
 * **Logger Middleware (Giriş/Çıkış Zaman Sayacı & Terminal Logger):**
   - Gelen her HTTP isteğini `Stopwatch` ile milisaniye hassasiyetinde ölçen [`RequestLoggingMiddleware`](./src/Presentation/Alumni.API/Middlewares/RequestLoggingMiddleware.cs) geliştirildi.
   - İstenen formatta terminale anlık ham çıktı yazdırıldı:  
-    `time , method , route , response type , duration` (Örn: `10:20:30 , POST , /users , 201 , 18ms`).
+    `time method route response type duration` (Örn: `10:20:30 POST /users 201 18ms`).
 * **404 Guardian Middleware ("return 404 errors with a reason"):**
   - Tanımsız rotalar veya veri tabanında bulunamayan kayıtlar için hatanın gerekçesini (`reason`) dinamik olarak üreten [`NotFoundGuardianMiddleware`](./src/Presentation/Alumni.API/Middlewares/NotFoundGuardianMiddleware.cs) yazıldı.
 * **5xx Guardian Middleware ("return 500/5xx errors with a reason"):**
@@ -367,7 +367,7 @@ docker compose up -d
   - `NotFoundGuardianMiddleware` üzerinde akıllı yönlendirme yapıldı: Tarayıcıdan (`text/html`) gelen geçersiz istekler otomatik olarak `HTTP 302 Redirect` ile `/404` sayfasına yönlendirilirken, API/Postman isteklerine doğrudan JSON hata yanıtı dönülmektedir.
 * **The Bouncer Middleware (Kapıdaki Güvenlik ve Yetki Fedaisi):**
   - Dersin ana başlığı olan bouncer mantığıyla çalışan [`BouncerMiddleware`](./src/Presentation/Alumni.API/Middlewares/BouncerMiddleware.cs) geliştirildi.
-  - API üzerindeki veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetleyerek geçerli `X-Api-Key` başlığı taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`).
+  - API üzerindeki veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetleyerek geçerli `X-Api-Key` başlığı taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`). Test senaryolarının engellenmemesi adına varsayılan olarak kapalıdır (`Enabled: false`).
 
 
 

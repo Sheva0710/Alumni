@@ -50,8 +50,8 @@ namespace Alumni.API.Middlewares
                 return;
             }
 
-            // 2. Bouncer ayarı aktif mi? (appsettings.json veya varsayılan true)
-            var bouncerEnabled = _configuration.GetValue<bool>("Bouncer:Enabled", true);
+            // 2. Bouncer ayarı aktif mi? (appsettings.json veya varsayılan false)
+            var bouncerEnabled = _configuration.GetValue<bool>("Bouncer:Enabled", false);
             if (!bouncerEnabled)
             {
                 await _next(context);
