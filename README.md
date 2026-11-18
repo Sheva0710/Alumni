@@ -21,6 +21,7 @@
 - [Proje Dizin Yapısı ve Dağıtılmış MVC Mimarisi](#-proje-dizin-yapısı-ve-dağıtılmış-mvc-mimarisi)
 - [HTTP Boru Hattı ve Middleware Mimarisi (The Bouncer & Guardians)](#-http-boru-hattı-ve-middleware-mimarisi-the-bouncer--guardians)
 - [Veritabanı ve Veri Tasarımı (Data Design)](#-veritabanı-ve-veri-tasarımı-data-design)
+- [Marka Kimliği ve Tasarım Sistemi (Brand & Design)](#-marka-kimliği-ve-tasarım-sistemi-brand--design)
 - [Mevcut Uç Noktalar (Aktif Rotalar)](#-mevcut-uç-noktalar-aktif-rotalar)
 - [Kurulum ve Başlangıç](#-kurulum-ve-başlangıç)
 - [Geliştirme Süreci (Changelog)](#-geliştirme-süreci-changelog)
@@ -185,6 +186,18 @@ Mezun Takip Sistemi'nin ilişkisel veri mimarisi, PostgreSQL 16 veritabanı moto
 
 > 🤖 **AI / Antigravity Assistant Directive (Data Single Source of Truth):**
 > All entity models, DTOs, migrations, and database schema modifications MUST strictly reference and adhere to [DATA_DESIGN.md](./DATA_DESIGN.md). Whenever a database table, entity, property, or relationship is added, updated, or deleted in the codebase, the AI assistant MUST keep `DATA_DESIGN.md` synchronized and updated as the single source of truth.
+
+---
+
+## 🎨 Marka Kimliği ve Tasarım Sistemi (Brand & Design)
+
+Platformun görsel dili, kurumsal renk paleti ve arayüz standartları aşağıdaki temel dokümanlar üzerinden yönetilir:
+
+* **Marka Kimliği ve Renk Paleti:** [brand.md](./brand.md) — Akademik Lacivert (`#1E3A8A`), Altın (`#D97706`), Kırık Beyaz (`#F8FAFC`) ve Koyu Arduvaz (`#1E293B`) çekirdek paletini ve marka konumlandırmasını tanımlar.
+* **Tasarım Sistemi ve Bileşen Kuralları:** [design.md](./design.md) — `brand.md` paletiyle uyumlu tipografi (`Plus Jakarta Sans` & `Inter`), 4px tabanlı boşluk ölçeği, kart/buton/navigasyon kuralları, gölge hiyerarşisi ve duyarlı davranış standartlarını içerir.
+
+> 🎨 **AI / Antigravity Assistant Directive (UI & Design Single Source of Truth):**
+> All web pages, Razor views, HTML templates, and UI components MUST strictly adhere to the brand palette in [brand.md](./brand.md) and the typography, spacing, layout, and component specifications in [design.md](./design.md).
 
 ---
 
