@@ -123,11 +123,13 @@ Alumni/
 │           ├── Controllers/         -> [CONTROLLER] MVC ve REST API controller'ları
 │           ├── Middlewares/         -> [MIDDLEWARE] RequestLogging, 5xxGuardian, 404Guardian, Bouncer
 │           ├── Common/              -> [YARDIMCI] StaticHtmlPages, FileErrorLogger
-│           ├── Views/               -> [VIEW] Razor View arayüzleri (User, JobPost, Application, Announcement, Shared/NotFound)
+│           ├── Views/               -> [VIEW] Razor View arayüzleri (Shared/_Layout, Shared/NotFound, User, JobPost, Application, Announcement)
 │           ├── Program.cs           -> Boru hattı (Pipeline), DI, Middleware ve Rota kayıtları
 │           └── Dockerfile           -> API Konteyner inşası
 ├── docker-compose.yml               -> Proje orkestrasyonu
 ├── DATA_DESIGN.md                   -> Veri modeli şartnamesi (Single Source of Truth)
+├── brand.md                         -> Marka kimliği ve çekirdek renk paleti
+├── design.md                        -> Tipografi, boşluk ve bileşen tasarım sistemi
 └── README.md
 ```
 
@@ -381,6 +383,21 @@ docker compose up -d
 * **The Bouncer Middleware (Kapıdaki Güvenlik ve Yetki Fedaisi):**
   - Dersin ana başlığı olan bouncer mantığıyla çalışan [`BouncerMiddleware`](./src/Presentation/Alumni.API/Middlewares/BouncerMiddleware.cs) geliştirildi.
   - API üzerindeki veri değiştirme işlemlerini (`POST`, `PUT`, `PATCH`, `DELETE`) denetleyerek geçerli `X-Api-Key` başlığı taşımayan yetkisiz istekleri controller'a sokmadan doğrudan kapıdan çevirir (`HTTP 401 Unauthorized / Short-circuit`). Test senaryolarının engellenmemesi adına varsayılan olarak kapalıdır (`Enabled: false`).
+### Hafta 08: Marka Kimliği, Tasarım Sistemi (`brand.md` & `design.md`) ve Sayfa Sayfa UI Yenilemesi
+* **Tasarım Sistemi Öncesi Deneysel Prototip (Geçici Branch):**
+  - `temp-random-homepage` geçici dalı üzerinde, marka ve tasarım kılavuzu olmadan tek prompt ile rastgele bir ana sayfa prototipi oluşturuldu; ardından `main` dalına geri dönüldü.
+* **Marka Kimliği ve Renk Paleti ([`brand.md`](./brand.md)):**
+  - Platform için **Akademik Lacivert & Altın** çekirdek paleti (`#1E3A8A` Navy Blue, `#D97706` Amber Gold, `#F8FAFC` Off-White, `#1E293B` Dark Slate) ve marka tonu tanımlanarak `README.md` içine anchorlandı.
+* **Tasarım Sistemi ve Bileşen Standartları ([`design.md`](./design.md)):**
+  - `VoltAgent/awesome-design-md` standart yapısından (YAML tasarım tokenları + 9 bölümlü sistem çerçevesi) ilham alınarak `brand.md` paletiyle uyumlu tipografi (`Plus Jakarta Sans`, `Inter`, `JetBrains Mono`), `4px` boşluk ölçeği, `72px` sticky navbar, lacivert başlıklı mezun profil kartları, gölge katmanları ve duyarlı davranış kuralları dokümante edilip `README.md` içine anchorlandı.
+* **Statik Sayfaların Yeniden Tasarlanması ([`StaticHtmlPages.cs`](./src/Presentation/Alumni.API/Common/StaticHtmlPages.cs)):**
+  - Ortak sayfa kabuğu (`RenderPageShell`) çıkarılarak **Ana Sayfa (`/`)**, **Hakkında (`/about`)** ve **Genel 404 Sayfası (`/404` & [`NotFound.cshtml`](./src/Presentation/Alumni.API/Views/Shared/NotFound.cshtml))** sıfırdan yeni tasarım sistemine geçirildi.
+* **Ortak Razor Layout ve Tüm MVC Alt Sayfalarının Sayfa Sayfa Yenilenmesi:**
+  - Tüm Razor görünümleri için ortak [`Views/Shared/_Layout.cshtml`](./src/Presentation/Alumni.API/Views/Shared/_Layout.cshtml) ve [`Views/_ViewStart.cshtml`](./src/Presentation/Alumni.API/Views/_ViewStart.cshtml) altyapısı kuruldu.
+  - **Mezunlar / Kullanıcılar (`/users`):** `Index.cshtml` (ana sayfadan gelen `?q=` arama desteği dahil), `Details.cshtml` ve `Edit.cshtml` yenilendi.
+  - **İş İlanları (`/jobs`):** `Index.cshtml` (`city` ve `120` karakter kuralı desteği dahil) ve `Details.cshtml` (başvuru formu ve aday tablosu) yenilendi.
+  - **Başvurular (`/applications`):** `Index.cshtml` (aday adı ve ilan başlığı çözümlemesi, satır içi durum güncelleme ve doğrudan başvuru oluşturma kartı) yenilendi.
+  - **Duyurular (`/announcements`):** `Index.cshtml`, `Details.cshtml` ve `Edit.cshtml` yenilendi.
 
 
 

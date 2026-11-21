@@ -1,174 +1,198 @@
 @model List<Alumni.Domain.Entities.Application>
+@{
+    ViewData["Title"] = "İş Başvuruları";
+    ViewData["ActiveNav"] = "/applications";
 
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İş Başvuruları — Alumni Tracking System</title>
+    var users = ViewBag.Users as List<Alumni.Domain.Entities.User> ?? new List<Alumni.Domain.Entities.User>();
+    var jobs = ViewBag.Jobs as List<Alumni.Domain.Entities.JobPost> ?? new List<Alumni.Domain.Entities.JobPost>();
+    var userMap = users.ToDictionary(u => u.Id, u => u);
+    var jobMap = jobs.ToDictionary(j => j.Id, j => j);
+}
+
+@section Styles {
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #1f2937; margin: 0; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2rem; }
-        h1 { color: #4F46E5; margin: 0; }
-        .nav-links a { margin-left: 1rem; color: #4F46E5; text-decoration: none; font-weight: 600; }
-        .nav-links a:hover { text-decoration: underline; }
-        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; }
-        .alert-success { background-color: #DEF7EC; color: #03543F; border: 1px solid #BCF0DA; }
-        .alert-error { background-color: #FDE8E8; color: #9B1C1C; border: 1px solid #FBD5D5; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 2.5rem; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        th { background-color: #f3f4f6; color: #4b5563; font-weight: 600; }
-        .badge-status { padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
-        .status-applied { background-color: #E0E7FF; color: #3730A3; }
-        .status-interview { background-color: #FEF3C7; color: #92400E; }
-        .status-accepted { background-color: #DEF7EC; color: #03543F; }
-        .status-rejected { background-color: #FDE8E8; color: #9B1C1C; }
-        .status-reviewing { background-color: #EDE9FE; color: #5B21B6; }
-        .btn { display: inline-block; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; }
-        .btn-danger { background-color: #EF4444; color: white; }
-        .btn-danger:hover { background-color: #DC2626; }
-        .btn-update { background-color: #4F46E5; color: white; }
-        .btn-update:hover { background-color: #4338CA; }
-        .form-card { background-color: #F9FAFB; padding: 2rem; border-radius: 8px; border: 1px solid #E5E7EB; margin-top: 2rem; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151; }
-        select { width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
-        .status-form select { width: auto; padding: 5px 8px; font-size: 0.85rem; margin-right: 4px; }
+        .status-inline-form {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+        .status-select {
+            min-height: 32px;
+            padding: 4px 10px;
+            font-size: 0.8125rem;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-surface);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+        .status-select:focus {
+            outline: none;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.14);
+        }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>📋 İş Başvuruları (Applications)</h1>
-                <p style="color: #6B7280; margin: 0.25rem 0 0 0;">Kullanıcılar ve İş İlanları arasındaki Many-to-Many ara tablo yönetimi</p>
-            </div>
-            <div class="nav-links">
-                <a href="/">🏠 Ana Sayfa</a>
-                <a href="/users">👥 Kullanıcılar</a>
-                <a href="/jobs">💼 İş İlanları</a>
-                <a href="/api/swagger" target="_blank">⚡ Swagger API</a>
-            </div>
-        </div>
+}
 
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <span class="eyebrow-badge">
+                <span class="eyebrow-dot" aria-hidden="true"></span>
+                Aday &amp; Süreç Takibi
+            </span>
+            <h1 class="page-title">İş Başvuruları</h1>
+            <p class="page-subtitle">Mezunların iş ilanlarına yaptığı başvuruları inceleyin, değerlendirme aşamalarını güncelleyin veya yeni başvuru oluşturun.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge badge-navy tabular-nums" style="padding:8px 14px; font-size:0.8125rem;">
+                Toplam Başvuru: @Model.Count
+            </span>
+            <a href="/jobs" class="btn btn-outline">İş İlanlarına Dön</a>
+        </div>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="container">
         @if (TempData["SuccessMessage"] != null)
         {
-            <div class="alert alert-success">✅ @TempData["SuccessMessage"]</div>
+            <div class="alert-success">@TempData["SuccessMessage"]</div>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-            <div class="alert alert-error">⚠️ @TempData["ErrorMessage"]</div>
+            <div class="alert-danger">@TempData["ErrorMessage"]</div>
         }
 
-        <h2>Tüm Başvurular (@Model.Count)</h2>
-        @if (Model.Count == 0)
-        {
-            <p style="color: #6B7280; font-style: italic;">Henüz sisteme kayıtlı bir başvuru bulunmamaktadır.</p>
-        }
-        else
-        {
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Başvuran Kullanıcı</th>
-                        <th>Başvurulan İş İlanı</th>
-                        <th>Mevcut Durum</th>
-                        <th>Durum Değiştir</th>
-                        <th>Başvuru Tarihi</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var app in Model)
+        <div class="workspace-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Tüm Başvurular</h2>
+                    <span class="badge badge-gold tabular-nums">@Model.Count Kayıt</span>
+                </div>
+                <div class="card-body">
+                    @if (Model.Count == 0)
                     {
-                        var statusClass = app.Status.ToLower() switch
-                        {
-                            "applied" => "status-applied",
-                            "interview" => "status-interview",
-                            "accepted" => "status-accepted",
-                            "rejected" => "status-rejected",
-                            "reviewing" => "status-reviewing",
-                            _ => "status-applied"
-                        };
-
-                        <tr>
-                            <td><strong>#@app.Id</strong></td>
-                            <td>
-                                <a href="/users/details/@app.UserId" style="color: #4F46E5; font-weight: 600; text-decoration: none;">
-                                    Kullanıcı #@app.UserId
-                                </a>
-                            </td>
-                            <td>
-                                <a href="/jobs/details/@app.JobPostId" style="color: #4F46E5; font-weight: 600; text-decoration: none;">
-                                    İlan #@app.JobPostId
-                                </a>
-                            </td>
-                            <td>
-                                <span class="badge-status @statusClass">@app.Status</span>
-                            </td>
-                            <td>
-                                <form action="/applications/@app.Id/status" method="post" class="status-form" style="display:inline-flex; align-items:center;">
-                                    <select name="status">
-                                        <option value="Applied" selected="@(app.Status == "Applied")">Applied</option>
-                                        <option value="Reviewing" selected="@(app.Status == "Reviewing")">Reviewing</option>
-                                        <option value="Interview" selected="@(app.Status == "Interview")">Interview</option>
-                                        <option value="Accepted" selected="@(app.Status == "Accepted")">Accepted</option>
-                                        <option value="Rejected" selected="@(app.Status == "Rejected")">Rejected</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-update">Güncelle</button>
-                                </form>
-                            </td>
-                            <td>@app.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                            <td>
-                                <form action="/applications/delete/@app.Id" method="post" style="display:inline;" onsubmit="return confirm('Bu başvuruyu iptal etmek istediğinize emin misiniz?');">
-                                    <button type="submit" class="btn btn-danger">İptal Et</button>
-                                </form>
-                            </td>
-                        </tr>
+                        <div class="empty-state">
+                            <p style="margin:0;">Henüz sisteme kayıtlı bir başvuru bulunmamaktadır.</p>
+                        </div>
                     }
-                </tbody>
-            </table>
-        }
+                    else
+                    {
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Başvuran Aday</th>
+                                        <th>İş İlanı</th>
+                                        <th>Mevcut Durum</th>
+                                        <th>Durum Güncelle</th>
+                                        <th>Tarih</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var app in Model)
+                                    {
+                                        var badgeClass = app.Status.ToLowerInvariant() switch
+                                        {
+                                            "accepted" => "badge-success",
+                                            "rejected" => "badge-danger",
+                                            "interview" or "reviewing" => "badge-warning",
+                                            _ => "badge-navy"
+                                        };
 
-        <!-- Doğrudan Başvuru Ekleme Formu -->
-        <div class="form-card">
-            <h3 style="margin-top: 0; color: #4F46E5;">➕ Doğrudan Başvuru Oluştur</h3>
-            <form action="/applications/create" method="post">
-                <div class="form-grid">
-                    <div>
-                        <label for="userId">Başvuran Kullanıcı:</label>
-                        <select name="userId" id="userId" required>
-                            <option value="">-- Kullanıcı Seçiniz --</option>
-                            @if (ViewBag.Users != null)
-                            {
-                                foreach (var user in (List<Alumni.Domain.Entities.User>)ViewBag.Users)
+                                        userMap.TryGetValue(app.UserId, out var applicant);
+                                        jobMap.TryGetValue(app.JobPostId, out var jobPost);
+
+                                        <tr>
+                                            <td class="mono tabular-nums"><strong>#@app.Id</strong></td>
+                                            <td>
+                                                <a href="/users/details/@app.UserId" style="color: var(--brand-navy); font-weight: 600; text-decoration: none;">
+                                                    @(applicant != null ? $"{applicant.FirstName} {applicant.LastName}" : $"Kullanıcı #{app.UserId}")
+                                                </a>
+                                                <div class="mono tabular-nums" style="font-size:0.75rem; color:var(--text-muted);">ID #@app.UserId</div>
+                                            </td>
+                                            <td>
+                                                <a href="/jobs/details/@app.JobPostId" style="color: var(--text-primary); font-weight: 600; text-decoration: none;">
+                                                    @(jobPost != null ? jobPost.Title : $"İlan #{app.JobPostId}")
+                                                </a>
+                                                @if (jobPost != null)
+                                                {
+                                                    <div style="font-size:0.78rem; color:var(--text-muted);">@jobPost.Company</div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @badgeClass">@app.Status</span>
+                                            </td>
+                                            <td>
+                                                <form action="/applications/@app.Id/status" method="post" class="status-inline-form">
+                                                    <select name="status" class="status-select" aria-label="Başvuru durumu">
+                                                        <option value="Applied" selected="@(app.Status == "Applied")">Applied</option>
+                                                        <option value="Reviewing" selected="@(app.Status == "Reviewing")">Reviewing</option>
+                                                        <option value="Interview" selected="@(app.Status == "Interview")">Interview</option>
+                                                        <option value="Accepted" selected="@(app.Status == "Accepted")">Accepted</option>
+                                                        <option value="Rejected" selected="@(app.Status == "Rejected")">Rejected</option>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-navy btn-sm">Güncelle</button>
+                                                </form>
+                                            </td>
+                                            <td class="tabular-nums" style="color: var(--text-secondary); white-space:nowrap;">
+                                                @app.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                            </td>
+                                            <td>
+                                                <form action="/applications/delete/@app.Id" method="post" style="display:inline;" onsubmit="return confirm('Bu başvuruyu iptal etmek istediğinize emin misiniz?');">
+                                                    <button type="submit" class="btn btn-danger-outline btn-sm">İptal Et</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <aside class="card">
+                <div class="card-navy-header">
+                    <h2>Doğrudan Başvuru Oluştur</h2>
+                    <span class="badge badge-gold">Unique Pair</span>
+                </div>
+                <div class="card-body">
+                    <form action="/applications/create" method="post">
+                        <div class="form-group">
+                            <label for="userId" class="form-label">Başvuran Kullanıcı *</label>
+                            <select name="userId" id="userId" class="form-control" required>
+                                <option value="">-- Kullanıcı Seçiniz --</option>
+                                @foreach (var user in users)
                                 {
                                     <option value="@user.Id">@user.FirstName @user.LastName (@user.Role - @user.Email)</option>
                                 }
-                            }
-                        </select>
-                    </div>
+                            </select>
+                        </div>
 
-                    <div>
-                        <label for="jobPostId">Başvurulacak İş İlanı:</label>
-                        <select name="jobPostId" id="jobPostId" required>
-                            <option value="">-- İş İlanı Seçiniz --</option>
-                            @if (ViewBag.Jobs != null)
-                            {
-                                foreach (var job in (List<Alumni.Domain.Entities.JobPost>)ViewBag.Jobs)
+                        <div class="form-group">
+                            <label for="jobPostId" class="form-label">Başvurulacak İş İlanı *</label>
+                            <select name="jobPostId" id="jobPostId" class="form-control" required>
+                                <option value="">-- İş İlanı Seçiniz --</option>
+                                @foreach (var job in jobs)
                                 {
-                                    <option value="@job.Id">#@job.Id: @job.Title - @job.Company</option>
+                                    <option value="@job.Id">#@job.Id: @job.Title — @job.Company</option>
                                 }
-                            }
-                        </select>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-gold btn-block">Başvuruyu Kaydet</button>
+                    </form>
+
+                    <div class="alert-warning" style="margin-top:16px;">
+                        Aynı aday aynı ilana yalnızca bir kez başvurabilir (<span class="mono">UNIQUE (user_id, job_post_id)</span>).
                     </div>
                 </div>
-
-                <button type="submit" class="btn btn-update" style="margin-top: 1rem; padding: 10px 18px; font-size: 0.95rem;">Başvuruyu Kaydet</button>
-            </form>
+            </aside>
         </div>
     </div>
-</body>
-</html>
+</section>

@@ -1,86 +1,172 @@
 @model List<Alumni.Domain.Entities.User>
+@{
+    ViewData["Title"] = "Mezun & Kullanıcı Dizini";
+    ViewData["ActiveNav"] = "/users";
 
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kullanıcı Yönetimi (MVC)</title>
+    var query = Context.Request.Query["q"].ToString().Trim();
+    var filteredUsers = string.IsNullOrWhiteSpace(query)
+        ? Model
+        : Model.Where(u =>
+            ($"{u.FirstName} {u.LastName}").Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            u.Role.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            (u.Profile != null && (
+                (u.Profile.Department?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.Profile.CurrentCompany?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                u.Profile.GraduationYear.ToString().Contains(query, StringComparison.OrdinalIgnoreCase)
+            ))).ToList();
+}
+
+@section Styles {
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #333; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1, h2 { color: #4F46E5; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        th { background-color: #f3f4f6; color: #4b5563; }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-weight: bold; margin-bottom: 0.5rem; }
-        input[type="text"], input[type="email"] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #4F46E5; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #4338CA; }
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .filter-bar input {
+            flex: 1;
+            min-width: 220px;
+        }
+        .user-cell-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .user-cell-email {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Kullanıcı Yönetimi (MVC View)</h1>
-        
-        <h2>Kayıtlı Kullanıcılar</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Ad</th>
-                    <th>Soyad</th>
-                    <th>E-Posta</th>
-                    <th>Rol</th>
-                    <th>Kayıt Tarihi</th>
-                    <th>İşlemler</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach(var user in Model)
-                {
-                    <tr>
-                        <td>@user.Id</td>
-                        <td>@user.FirstName</td>
-                        <td>@user.LastName</td>
-                        <td>@user.Email</td>
-                        <td>@user.Role</td>
-                        <td>@user.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>
-                            <a href="/users/details/@user.Id" style="margin-right: 5px; color: #4F46E5; text-decoration: none;">Detaylar</a>
-                            <a href="/users/edit/@user.Id" style="margin-right: 5px; color: #10B981; text-decoration: none;">Düzenle</a>
-                            <form action="/users/delete/@user.Id" method="post" style="display:inline;">
-                                <button type="submit" style="background-color: #EF4444; padding: 5px 10px; font-size: 0.8rem;">Sil</button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+}
 
-        <hr />
-
-        <h2>Yeni Kullanıcı Ekle</h2>
-        <form method="post" action="/users">
-            <div class="form-group">
-                <label for="FirstName">Ad:</label>
-                <input type="text" id="FirstName" name="FirstName" required />
-            </div>
-            <div class="form-group">
-                <label for="LastName">Soyad:</label>
-                <input type="text" id="LastName" name="LastName" />
-            </div>
-            <div class="form-group">
-                <label for="Email">E-Posta:</label>
-                <input type="email" id="Email" name="Email" required />
-            </div>
-            <div class="form-group">
-                <label for="Role">Rol:</label>
-                <input type="text" id="Role" name="Role" placeholder="User" />
-            </div>
-            <button type="submit">Kullanıcı Ekle</button>
-        </form>
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <span class="eyebrow-badge">
+                <span class="eyebrow-dot" aria-hidden="true"></span>
+                Mezun &amp; Kullanıcı Yönetimi
+            </span>
+            <h1 class="page-title">Mezun &amp; Kullanıcı Dizini</h1>
+            <p class="page-subtitle">Sistemdeki kayıtlı mezunları ve kullanıcıları görüntüleyin, detay profillerine erişin veya yeni kayıt ekleyin.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge badge-navy tabular-nums" style="padding:8px 14px; font-size:0.8125rem;">
+                Toplam Kayıt: @Model.Count
+            </span>
+            <a href="/jobs" class="btn btn-outline">İş İlanlarına Geç</a>
+        </div>
     </div>
-</body>
-</html>
+</section>
+
+<section class="page-content">
+    <div class="container workspace-grid">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Kayıtlı Kullanıcılar</h2>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(query))
+                {
+                    <span class="badge badge-gold tabular-nums">"@query" için @filteredUsers.Count sonuç</span>
+                }
+            </div>
+            <div class="card-body">
+                <form class="filter-bar" method="get" action="/users" role="search">
+                    <input type="search" name="q" value="@query" class="form-control" placeholder="İsim, e-posta, rol, bölüm veya şirket ile filtrele..." aria-label="Kullanıcı ara" />
+                    <button type="submit" class="btn btn-navy">Filtrele</button>
+                    @if (!string.IsNullOrWhiteSpace(query))
+                    {
+                        <a href="/users" class="btn btn-outline">Temizle</a>
+                    }
+                </form>
+
+                @if (filteredUsers.Count == 0)
+                {
+                    <div class="empty-state">
+                        @if (string.IsNullOrWhiteSpace(query))
+                        {
+                            <p style="margin:0;">Henüz kayıtlı kullanıcı bulunmamaktadır. Sağdaki formu kullanarak yeni bir kullanıcı ekleyebilirsiniz.</p>
+                        }
+                        else
+                        {
+                            <p style="margin:0;">"<strong>@query</strong>" aramasına uygun kullanıcı bulunamadı.</p>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad &amp; E-Posta</th>
+                                    <th>Rol</th>
+                                    <th>Kayıt Tarihi</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in filteredUsers)
+                                {
+                                    <tr>
+                                        <td class="mono tabular-nums"><strong>#@user.Id</strong></td>
+                                        <td>
+                                            <div class="user-cell-name">@user.FirstName @user.LastName</div>
+                                            <div class="user-cell-email">@user.Email</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-navy">@user.Role</span>
+                                        </td>
+                                        <td class="tabular-nums" style="color: var(--text-secondary);">
+                                            @user.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                        </td>
+                                        <td>
+                                            <div class="row-actions">
+                                                <a href="/users/details/@user.Id" class="btn btn-outline btn-sm">Detay</a>
+                                                <a href="/users/edit/@user.Id" class="btn btn-outline btn-sm">Düzenle</a>
+                                                <form action="/users/delete/@user.Id" method="post" style="display:inline;" onsubmit="return confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?');">
+                                                    <button type="submit" class="btn btn-danger-outline btn-sm">Sil</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <aside class="card">
+            <div class="card-navy-header">
+                <h2>Yeni Kullanıcı Ekle</h2>
+                <span class="badge badge-gold">Hızlı Kayıt</span>
+            </div>
+            <div class="card-body">
+                <form method="post" action="/users">
+                    <div class="form-group">
+                        <label for="FirstName" class="form-label">Ad *</label>
+                        <input type="text" id="FirstName" name="FirstName" class="form-control" placeholder="Örn: Zeynep" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="LastName" class="form-label">Soyad</label>
+                        <input type="text" id="LastName" name="LastName" class="form-control" placeholder="Örn: Kaya" />
+                    </div>
+                    <div class="form-group">
+                        <label for="Email" class="form-label">E-Posta *</label>
+                        <input type="email" id="Email" name="Email" class="form-control" placeholder="ornek@universite.edu.tr" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Role" class="form-label">Sistem Rolü</label>
+                        <input type="text" id="Role" name="Role" class="form-control" placeholder="Alumni" />
+                        <div class="form-hint">Boş bırakılırsa varsayılan olarak <span class="mono">Alumni</span> atanır.</div>
+                    </div>
+                    <button type="submit" class="btn btn-gold btn-block">Kullanıcı Ekle</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+</section>

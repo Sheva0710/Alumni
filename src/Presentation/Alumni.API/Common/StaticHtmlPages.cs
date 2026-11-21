@@ -2,15 +2,17 @@ namespace Alumni.API.Common;
 
 public static class StaticHtmlPages
 {
-    public static string GetHomePageHtml()
+    private static string RenderPageShell(string pageTitle, string activePath, string extraCss, string mainContent)
     {
-        return """
+        string NavClass(string path) => activePath == path ? "nav-link active" : "nav-link";
+
+        return $$"""
         <!DOCTYPE html>
         <html lang="tr">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Alumni Tracking System — Akademik Mezun Ağı</title>
+            <title>{{pageTitle}}</title>
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -33,6 +35,10 @@ public static class StaticHtmlPages
                     --border-strong: #CBD5E1;
                     --status-success: #059669;
                     --status-success-tint: #ECFDF5;
+                    --status-warning: #D97706;
+                    --status-warning-tint: #FFFBEB;
+                    --status-danger: #DC2626;
+                    --status-danger-tint: #FEF2F2;
                     --shadow-sm: 0 1px 2px rgba(30, 41, 59, 0.04), 0 1px 3px rgba(30, 41, 59, 0.03);
                     --shadow-md: 0 10px 25px -5px rgba(30, 58, 138, 0.08), 0 4px 10px -2px rgba(30, 41, 59, 0.04);
                     --shadow-nav: 0 4px 16px rgba(15, 23, 42, 0.06);
@@ -58,6 +64,13 @@ public static class StaticHtmlPages
                     background-color: var(--bg-canvas);
                     color: var(--text-primary);
                     -webkit-font-smoothing: antialiased;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                main {
+                    flex: 1;
                 }
 
                 h1, h2, h3, .font-display {
@@ -167,7 +180,7 @@ public static class StaticHtmlPages
                     flex-shrink: 0;
                 }
 
-                /* Buttons (8px radius, Notion-inspired precision) */
+                /* Buttons (8px radius) */
                 .btn {
                     display: inline-flex;
                     align-items: center;
@@ -224,23 +237,7 @@ public static class StaticHtmlPages
                     width: 100%;
                 }
 
-                /* Hero Section */
-                .hero-section {
-                    padding: 64px 0 56px;
-                    background:
-                        radial-gradient(ellipse 80% 60% at 85% 0%, rgba(30, 58, 138, 0.06), transparent 65%),
-                        radial-gradient(ellipse 60% 50% at 10% 20%, rgba(217, 119, 6, 0.05), transparent 60%),
-                        var(--bg-canvas);
-                    border-bottom: 1px solid var(--border-subtle);
-                }
-
-                .hero-grid {
-                    display: grid;
-                    grid-template-columns: 1.15fr 0.85fr;
-                    gap: 48px;
-                    align-items: center;
-                }
-
+                /* Shared Badges & Sections */
                 .eyebrow-badge {
                     display: inline-flex;
                     align-items: center;
@@ -264,206 +261,6 @@ public static class StaticHtmlPages
                     background-color: var(--accent-gold);
                 }
 
-                .hero-title {
-                    font-size: clamp(2rem, 4.2vw, 3.125rem);
-                    font-weight: 800;
-                    line-height: 1.12;
-                    letter-spacing: -0.03em;
-                    margin-bottom: 20px;
-                }
-
-                .hero-title .accent {
-                    color: var(--brand-navy);
-                }
-
-                .hero-lead {
-                    font-size: 1.125rem;
-                    color: var(--text-secondary);
-                    line-height: 1.65;
-                    max-width: 560px;
-                    margin: 0 0 28px;
-                }
-
-                .search-form {
-                    display: flex;
-                    align-items: center;
-                    background-color: var(--bg-surface);
-                    border: 1px solid var(--border-strong);
-                    border-radius: 10px;
-                    padding: 6px;
-                    box-shadow: var(--shadow-sm);
-                    max-width: 580px;
-                    transition: border-color 160ms ease, box-shadow 160ms ease;
-                }
-
-                .search-form:focus-within {
-                    border-color: var(--brand-navy);
-                    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.14);
-                }
-
-                .search-icon {
-                    color: var(--text-muted);
-                    margin-left: 12px;
-                    display: inline-flex;
-                    flex-shrink: 0;
-                }
-
-                .search-form input {
-                    flex: 1;
-                    min-width: 0;
-                    border: none;
-                    background: transparent;
-                    padding: 10px 12px;
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.95rem;
-                    color: var(--text-primary);
-                    outline: none;
-                }
-
-                .search-form input::placeholder {
-                    color: #94A3B8;
-                }
-
-                .hero-links {
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 16px;
-                    margin-top: 20px;
-                }
-
-                .quick-links {
-                    font-size: 0.875rem;
-                    color: var(--text-muted);
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 8px;
-                }
-
-                .quick-chip {
-                    color: var(--brand-navy);
-                    background-color: var(--bg-surface);
-                    border: 1px solid var(--border-subtle);
-                    padding: 4px 10px;
-                    border-radius: var(--radius-pill);
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    text-decoration: none;
-                    transition: border-color 160ms ease, background-color 160ms ease;
-                }
-
-                .quick-chip:hover {
-                    border-color: var(--brand-navy);
-                    background-color: var(--brand-navy-tint);
-                }
-
-                /* Institutional Summary Panel */
-                .summary-panel {
-                    background-color: var(--bg-surface);
-                    border: 1px solid var(--border-subtle);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-md);
-                    overflow: hidden;
-                }
-
-                .summary-header {
-                    background-color: var(--brand-navy);
-                    color: #FFFFFF;
-                    padding: 16px 22px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 12px;
-                }
-
-                .summary-header-title {
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-size: 1rem;
-                    font-weight: 700;
-                    color: #FFFFFF;
-                }
-
-                .summary-header-sub {
-                    font-size: 0.75rem;
-                    color: #DBEAFE;
-                    margin-top: 2px;
-                }
-
-                .verified-pill {
-                    background-color: rgba(255, 255, 255, 0.14);
-                    border: 1px solid rgba(255, 255, 255, 0.24);
-                    color: #FEF3C7;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    padding: 4px 10px;
-                    border-radius: var(--radius-pill);
-                    white-space: nowrap;
-                }
-
-                .summary-body {
-                    padding: 20px;
-                }
-
-                .kpi-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 12px;
-                }
-
-                .kpi-box {
-                    background-color: var(--bg-canvas);
-                    border: 1px solid var(--border-subtle);
-                    border-radius: var(--radius-md);
-                    padding: 16px;
-                }
-
-                .kpi-value {
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-size: 1.625rem;
-                    font-weight: 800;
-                    color: var(--brand-navy);
-                    line-height: 1.15;
-                }
-
-                .kpi-value.gold {
-                    color: var(--accent-gold);
-                }
-
-                .kpi-label {
-                    font-size: 0.8125rem;
-                    color: var(--text-muted);
-                    margin-top: 4px;
-                }
-
-                .summary-footer {
-                    margin-top: 16px;
-                    padding-top: 14px;
-                    border-top: 1px solid var(--border-subtle);
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    font-size: 0.8125rem;
-                    color: var(--text-secondary);
-                }
-
-                .status-dot {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    color: var(--status-success);
-                    font-weight: 600;
-                }
-
-                .status-dot::before {
-                    content: "";
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 50%;
-                    background-color: var(--status-success);
-                }
-
-                /* Sections */
                 .page-section {
                     padding: 64px 0;
                 }
@@ -507,101 +304,10 @@ public static class StaticHtmlPages
                     max-width: 600px;
                 }
 
-                /* Featured Alumni Cards (Academic Navy Header Pattern per design.md) */
-                .alumni-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 24px;
-                }
-
-                .alumni-card {
-                    background-color: var(--bg-surface);
-                    border: 1px solid var(--border-subtle);
-                    border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-                }
-
-                .alumni-card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: var(--shadow-md);
-                    border-color: var(--border-strong);
-                }
-
-                .alumni-card-banner {
-                    background-color: var(--brand-navy);
-                    padding: 16px 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-
-                .alumni-avatar {
-                    width: 42px;
-                    height: 42px;
-                    border-radius: 50%;
-                    background-color: var(--bg-surface);
-                    color: var(--brand-navy);
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-weight: 800;
-                    font-size: 0.95rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                    border: 2px solid var(--accent-gold);
-                }
-
-                .alumni-banner-name {
-                    font-family: 'Plus Jakarta Sans', sans-serif;
-                    font-size: 1rem;
-                    font-weight: 700;
-                    color: #FFFFFF;
-                    line-height: 1.3;
-                }
-
-                .alumni-banner-role {
-                    font-size: 0.8125rem;
-                    color: #DBEAFE;
-                }
-
-                .alumni-card-body {
-                    padding: 20px;
-                    display: flex;
-                    flex-direction: column;
-                    flex: 1;
-                }
-
-                .alumni-org {
-                    font-weight: 600;
-                    color: var(--text-primary);
-                    font-size: 0.95rem;
-                    margin-bottom: 12px;
-                }
-
-                .alumni-meta-list {
-                    list-style: none;
-                    margin: 0 0 16px;
-                    padding: 0;
-                    display: grid;
-                    gap: 6px;
-                    font-size: 0.875rem;
-                    color: var(--text-secondary);
-                }
-
-                .alumni-meta-list li strong {
-                    color: var(--text-primary);
-                    font-weight: 600;
-                }
-
                 .badge-row {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 8px;
-                    margin-bottom: 20px;
                 }
 
                 .badge {
@@ -623,73 +329,6 @@ public static class StaticHtmlPages
                 .badge-gold {
                     background-color: var(--accent-gold-tint);
                     color: #92400E;
-                }
-
-                .alumni-card-footer {
-                    margin-top: auto;
-                }
-
-                /* Platform Modules Grid (Standard Hairline Cards) */
-                .modules-grid {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 20px;
-                }
-
-                .module-card {
-                    background-color: var(--bg-canvas);
-                    border: 1px solid var(--border-subtle);
-                    border-radius: var(--radius-lg);
-                    padding: 24px;
-                    text-decoration: none;
-                    color: inherit;
-                    display: flex;
-                    flex-direction: column;
-                    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
-                }
-
-                .module-card:hover {
-                    background-color: var(--bg-surface);
-                    border-color: var(--brand-navy);
-                    box-shadow: var(--shadow-md);
-                    transform: translateY(-2px);
-                }
-
-                .module-icon {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: var(--radius-md);
-                    background-color: var(--brand-navy-tint);
-                    color: var(--brand-navy);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-bottom: 16px;
-                }
-
-                .module-card h3 {
-                    font-size: 1.0625rem;
-                    font-weight: 700;
-                    margin-bottom: 8px;
-                }
-
-                .module-card p {
-                    font-size: 0.875rem;
-                    color: var(--text-secondary);
-                    margin: 0 0 16px;
-                    line-height: 1.55;
-                    flex: 1;
-                }
-
-                .module-route {
-                    font-size: 0.8125rem;
-                    font-weight: 600;
-                    color: var(--brand-navy);
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding-top: 12px;
-                    border-top: 1px solid var(--border-subtle);
                 }
 
                 /* Footer */
@@ -738,51 +377,22 @@ public static class StaticHtmlPages
                     color: #FCD34D;
                 }
 
-                /* Responsive Rules per design.md Section 8 */
                 @media (max-width: 1023px) {
-                    .hero-grid {
-                        grid-template-columns: 1fr;
-                        gap: 32px;
-                    }
-                    .alumni-grid {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
-                    .modules-grid {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
                     .main-nav {
                         display: none;
                     }
                 }
 
                 @media (max-width: 767px) {
-                    .hero-section {
-                        padding: 40px 0 44px;
-                    }
                     .page-section {
                         padding: 44px 0;
-                    }
-                    .alumni-grid,
-                    .modules-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    .search-form {
-                        flex-direction: column;
-                        align-items: stretch;
-                        gap: 8px;
-                        padding: 10px;
-                    }
-                    .search-icon {
-                        display: none;
-                    }
-                    .search-form .btn {
-                        min-height: 44px;
-                        width: 100%;
                     }
                     .header-actions .btn-outline {
                         display: none;
                     }
                 }
+
+                {{extraCss}}
             </style>
         </head>
         <body>
@@ -799,12 +409,12 @@ public static class StaticHtmlPages
                     </a>
 
                     <nav class="main-nav" aria-label="Ana Navigasyon">
-                        <a href="/" class="nav-link active">Ana Sayfa</a>
-                        <a href="/users" class="nav-link">Mezunlar</a>
-                        <a href="/jobs" class="nav-link">İş İlanları</a>
-                        <a href="/applications" class="nav-link">Başvurular</a>
-                        <a href="/announcements" class="nav-link">Duyurular</a>
-                        <a href="/about" class="nav-link">Hakkında</a>
+                        <a href="/" class="{{NavClass("/")}}">Ana Sayfa</a>
+                        <a href="/users" class="{{NavClass("/users")}}">Mezunlar</a>
+                        <a href="/jobs" class="{{NavClass("/jobs")}}">İş İlanları</a>
+                        <a href="/applications" class="{{NavClass("/applications")}}">Başvurular</a>
+                        <a href="/announcements" class="{{NavClass("/announcements")}}">Duyurular</a>
+                        <a href="/about" class="{{NavClass("/about")}}">Hakkında</a>
                     </nav>
 
                     <div class="header-actions">
@@ -815,6 +425,350 @@ public static class StaticHtmlPages
             </header>
 
             <main>
+                {{mainContent}}
+            </main>
+
+            <footer class="site-footer">
+                <div class="container footer-inner">
+                    <div>
+                        <div class="footer-brand">Alumni Tracking System</div>
+                        <div class="footer-note">Üniversite Kariyer Merkezi &amp; Mezunlar Ofisi • Akademik Lacivert &amp; Altın Tasarım Sistemi</div>
+                    </div>
+                    <nav class="footer-links" aria-label="Alt Menü">
+                        <a href="/about">Hakkında</a>
+                        <a href="/users">Mezunlar</a>
+                        <a href="/jobs">İş İlanları</a>
+                        <a href="/announcements">Duyurular</a>
+                        <a href="/api/swagger">Swagger / API</a>
+                        <a href="mailto:alumni@ogr.iu.edu.tr">İletişim</a>
+                    </nav>
+                </div>
+            </footer>
+        </body>
+        </html>
+        """;
+    }
+
+    public static string GetHomePageHtml()
+    {
+        const string homeCss = """
+                .hero-section {
+                    padding: 64px 0 56px;
+                    background:
+                        radial-gradient(ellipse 80% 60% at 85% 0%, rgba(30, 58, 138, 0.06), transparent 65%),
+                        radial-gradient(ellipse 60% 50% at 10% 20%, rgba(217, 119, 6, 0.05), transparent 60%),
+                        var(--bg-canvas);
+                    border-bottom: 1px solid var(--border-subtle);
+                }
+                .hero-grid {
+                    display: grid;
+                    grid-template-columns: 1.15fr 0.85fr;
+                    gap: 48px;
+                    align-items: center;
+                }
+                .hero-title {
+                    font-size: clamp(2rem, 4.2vw, 3.125rem);
+                    font-weight: 800;
+                    line-height: 1.12;
+                    letter-spacing: -0.03em;
+                    margin-bottom: 20px;
+                }
+                .hero-title .accent { color: var(--brand-navy); }
+                .hero-lead {
+                    font-size: 1.125rem;
+                    color: var(--text-secondary);
+                    line-height: 1.65;
+                    max-width: 560px;
+                    margin: 0 0 28px;
+                }
+                .search-form {
+                    display: flex;
+                    align-items: center;
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-strong);
+                    border-radius: 10px;
+                    padding: 6px;
+                    box-shadow: var(--shadow-sm);
+                    max-width: 580px;
+                    transition: border-color 160ms ease, box-shadow 160ms ease;
+                }
+                .search-form:focus-within {
+                    border-color: var(--brand-navy);
+                    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.14);
+                }
+                .search-icon {
+                    color: var(--text-muted);
+                    margin-left: 12px;
+                    display: inline-flex;
+                    flex-shrink: 0;
+                }
+                .search-form input {
+                    flex: 1;
+                    min-width: 0;
+                    border: none;
+                    background: transparent;
+                    padding: 10px 12px;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.95rem;
+                    color: var(--text-primary);
+                    outline: none;
+                }
+                .search-form input::placeholder { color: #94A3B8; }
+                .hero-links {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 16px;
+                    margin-top: 20px;
+                }
+                .quick-links {
+                    font-size: 0.875rem;
+                    color: var(--text-muted);
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .quick-chip {
+                    color: var(--brand-navy);
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-subtle);
+                    padding: 4px 10px;
+                    border-radius: var(--radius-pill);
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    text-decoration: none;
+                    transition: border-color 160ms ease, background-color 160ms ease;
+                }
+                .quick-chip:hover {
+                    border-color: var(--brand-navy);
+                    background-color: var(--brand-navy-tint);
+                }
+                .summary-panel {
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-md);
+                    overflow: hidden;
+                }
+                .summary-header {
+                    background-color: var(--brand-navy);
+                    color: #FFFFFF;
+                    padding: 16px 22px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .summary-header-title {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: #FFFFFF;
+                }
+                .summary-header-sub {
+                    font-size: 0.75rem;
+                    color: #DBEAFE;
+                    margin-top: 2px;
+                }
+                .verified-pill {
+                    background-color: rgba(255, 255, 255, 0.14);
+                    border: 1px solid rgba(255, 255, 255, 0.24);
+                    color: #FEF3C7;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    padding: 4px 10px;
+                    border-radius: var(--radius-pill);
+                    white-space: nowrap;
+                }
+                .summary-body { padding: 20px; }
+                .kpi-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 12px;
+                }
+                .kpi-box {
+                    background-color: var(--bg-canvas);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-md);
+                    padding: 16px;
+                }
+                .kpi-value {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 1.625rem;
+                    font-weight: 800;
+                    color: var(--brand-navy);
+                    line-height: 1.15;
+                }
+                .kpi-value.gold { color: var(--accent-gold); }
+                .kpi-label {
+                    font-size: 0.8125rem;
+                    color: var(--text-muted);
+                    margin-top: 4px;
+                }
+                .summary-footer {
+                    margin-top: 16px;
+                    padding-top: 14px;
+                    border-top: 1px solid var(--border-subtle);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 0.8125rem;
+                    color: var(--text-secondary);
+                }
+                .status-dot {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    color: var(--status-success);
+                    font-weight: 600;
+                }
+                .status-dot::before {
+                    content: "";
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: var(--status-success);
+                }
+                .alumni-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
+                }
+                .alumni-card {
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+                }
+                .alumni-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
+                    border-color: var(--border-strong);
+                }
+                .alumni-card-banner {
+                    background-color: var(--brand-navy);
+                    padding: 16px 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .alumni-avatar {
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 50%;
+                    background-color: var(--bg-surface);
+                    color: var(--brand-navy);
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-weight: 800;
+                    font-size: 0.95rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    border: 2px solid var(--accent-gold);
+                }
+                .alumni-banner-name {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: #FFFFFF;
+                    line-height: 1.3;
+                }
+                .alumni-banner-role { font-size: 0.8125rem; color: #DBEAFE; }
+                .alumni-card-body {
+                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+                }
+                .alumni-org {
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    font-size: 0.95rem;
+                    margin-bottom: 12px;
+                }
+                .alumni-meta-list {
+                    list-style: none;
+                    margin: 0 0 16px;
+                    padding: 0;
+                    display: grid;
+                    gap: 6px;
+                    font-size: 0.875rem;
+                    color: var(--text-secondary);
+                }
+                .alumni-meta-list li strong { color: var(--text-primary); font-weight: 600; }
+                .alumni-card .badge-row { margin-bottom: 20px; }
+                .alumni-card-footer { margin-top: auto; }
+                .modules-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 20px;
+                }
+                .module-card {
+                    background-color: var(--bg-canvas);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    padding: 24px;
+                    text-decoration: none;
+                    color: inherit;
+                    display: flex;
+                    flex-direction: column;
+                    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+                }
+                .module-card:hover {
+                    background-color: var(--bg-surface);
+                    border-color: var(--brand-navy);
+                    box-shadow: var(--shadow-md);
+                    transform: translateY(-2px);
+                }
+                .module-icon {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: var(--radius-md);
+                    background-color: var(--brand-navy-tint);
+                    color: var(--brand-navy);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 16px;
+                }
+                .module-card h3 { font-size: 1.0625rem; font-weight: 700; margin-bottom: 8px; }
+                .module-card p {
+                    font-size: 0.875rem;
+                    color: var(--text-secondary);
+                    margin: 0 0 16px;
+                    line-height: 1.55;
+                    flex: 1;
+                }
+                .module-route {
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    color: var(--brand-navy);
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-top: 12px;
+                    border-top: 1px solid var(--border-subtle);
+                }
+                @media (max-width: 1023px) {
+                    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+                    .alumni-grid, .modules-grid { grid-template-columns: repeat(2, 1fr); }
+                }
+                @media (max-width: 767px) {
+                    .hero-section { padding: 40px 0 44px; }
+                    .alumni-grid, .modules-grid { grid-template-columns: 1fr; }
+                    .search-form { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; }
+                    .search-icon { display: none; }
+                    .search-form .btn { min-height: 44px; width: 100%; }
+                }
+                """;
+
+        const string homeMain = """
                 <section class="hero-section">
                     <div class="container hero-grid">
                         <div>
@@ -1048,388 +1002,464 @@ public static class StaticHtmlPages
                         </div>
                     </div>
                 </section>
-            </main>
+                """;
 
-            <footer class="site-footer">
-                <div class="container footer-inner">
-                    <div>
-                        <div class="footer-brand">Alumni Tracking System</div>
-                        <div class="footer-note">Üniversite Kariyer Merkezi &amp; Mezunlar Ofisi • Akademik Lacivert &amp; Altın Tasarım Sistemi</div>
-                    </div>
-                    <nav class="footer-links" aria-label="Alt Menü">
-                        <a href="/about">Hakkında</a>
-                        <a href="/users">Mezunlar</a>
-                        <a href="/jobs">İş İlanları</a>
-                        <a href="/announcements">Duyurular</a>
-                        <a href="/api/swagger">Swagger / API</a>
-                        <a href="mailto:alumni@ogr.iu.edu.tr">İletişim</a>
-                    </nav>
-                </div>
-            </footer>
-        </body>
-        </html>
-        """;
+        return RenderPageShell("Alumni Tracking System — Akademik Mezun Ağı", "/", homeCss, homeMain);
     }
 
     public static string GetAboutPageHtml()
     {
-        return """
-        <!DOCTYPE html>
-        <html lang="tr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Hakkında - Alumni Network</title>
-            <style>
-                :root {
-                    --primary: #4F46E5;
-                    --primary-hover: #4338CA;
-                    --bg: #F9FAFB;
-                    --text: #111827;
-                    --text-light: #6B7280;
-                    --card-bg: #FFFFFF;
-                    --border: #E5E7EB;
-                }
-                body {
-                    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-                    margin: 0;
-                    background-color: var(--bg);
-                    color: var(--text);
-                    line-height: 1.5;
-                }
-                header {
-                    background: var(--card-bg);
-                    padding: 1rem 2rem;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid var(--border);
-                    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                }
-                .logo {
-                    font-size: 1.5rem;
-                    font-weight: bold;
-                    color: var(--primary);
-                    text-decoration: none;
-                }
-                .nav-link {
-                    color: var(--text);
-                    text-decoration: none;
-                    font-weight: 500;
-                    transition: color 0.2s;
-                }
-                .nav-link:hover {
-                    color: var(--primary);
-                }
-                .hero {
+        const string aboutCss = """
+                .about-hero {
+                    padding: 64px 0 56px;
+                    background:
+                        radial-gradient(ellipse 75% 60% at 50% 0%, rgba(30, 58, 138, 0.06), transparent 70%),
+                        var(--bg-canvas);
+                    border-bottom: 1px solid var(--border-subtle);
                     text-align: center;
-                    padding: 4rem 1rem;
-                    background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
                 }
-                .hero h1 {
-                    font-size: 2.5rem;
-                    margin-bottom: 1rem;
-                    color: var(--text);
+                .about-hero h1 {
+                    font-size: clamp(2rem, 3.8vw, 2.875rem);
+                    font-weight: 800;
+                    line-height: 1.15;
+                    letter-spacing: -0.03em;
+                    margin-bottom: 16px;
                 }
-                .hero p {
+                .about-hero p {
                     font-size: 1.125rem;
-                    color: var(--text-light);
-                    max-width: 700px;
-                    margin: 0 auto;
+                    color: var(--text-secondary);
+                    max-width: 680px;
+                    margin: 0 auto 28px;
+                    line-height: 1.65;
                 }
-                .features-section {
-                    max-width: 1000px;
-                    margin: 4rem auto;
-                    padding: 0 1rem;
+                .about-hero-actions {
+                    display: flex;
+                    justify-content: center;
+                    gap: 12px;
+                    flex-wrap: wrap;
                 }
-                .cards {
+                .pillars-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                    gap: 1.5rem;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
                 }
-                .card {
-                    background: var(--card-bg);
-                    border-radius: 0.75rem;
-                    padding: 2rem 1.5rem;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-                    border: 1px solid var(--border);
-                    text-align: center;
-                    transition: transform 0.2s, box-shadow 0.2s;
+                .pillar-card {
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    padding: 28px 24px;
+                    box-shadow: var(--shadow-sm);
+                    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
                 }
-                .card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                .pillar-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-md);
+                    border-color: var(--border-strong);
                 }
-                .card-icon {
-                    font-size: 2.5rem;
-                    margin-bottom: 1rem;
+                .pillar-icon {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: var(--radius-md);
+                    background-color: var(--brand-navy-tint);
+                    color: var(--brand-navy);
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 18px;
                 }
-                .card h3 {
-                    margin: 0 0 1rem 0;
-                    font-size: 1.25rem;
-                    color: var(--primary);
+                .pillar-card h3 {
+                    font-size: 1.125rem;
+                    font-weight: 700;
+                    margin-bottom: 10px;
+                    color: var(--brand-navy);
                 }
-                .card p {
-                    color: var(--text-light);
-                    font-size: 0.95rem;
+                .pillar-card p {
+                    color: var(--text-secondary);
+                    font-size: 0.9375rem;
                     margin: 0;
+                    line-height: 1.6;
                 }
-                .contact-section {
-                    max-width: 800px;
-                    margin: 4rem auto 5rem auto;
-                    padding: 2rem;
-                    background: var(--card-bg);
-                    border-radius: 0.75rem;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-                    border: 1px solid var(--border);
-                    text-align: center;
+                .principles-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 24px;
                 }
-                .contact-section h2 {
-                    margin-top: 0;
+                .principle-item {
+                    background-color: var(--bg-canvas);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    padding: 24px;
+                    display: flex;
+                    gap: 16px;
+                    align-items: flex-start;
                 }
-                .contact-section p {
-                    color: var(--text-light);
-                    margin-bottom: 0;
+                .principle-step {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: var(--radius-md);
+                    background-color: var(--brand-navy);
+                    color: #FFFFFF;
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-weight: 700;
+                    font-size: 0.875rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
                 }
-                .email-link {
-                    color: var(--primary);
-                    font-weight: 600;
-                    text-decoration: none;
+                .principle-item h3 {
+                    font-size: 1rem;
+                    font-weight: 700;
+                    margin-bottom: 6px;
                 }
-                .email-link:hover {
-                    text-decoration: underline;
+                .principle-item p {
+                    margin: 0;
+                    font-size: 0.9rem;
+                    color: var(--text-secondary);
                 }
-            </style>
-        </head>
-        <body>
-            <header>
-                <a href="/" class="logo">🎓 Alumni Network</a>
-                <nav>
-                    <a href="/" class="nav-link">Ana Sayfa</a>
-                </nav>
-            </header>
-            
-            <main>
-                <section class="hero">
-                    <h1>Mezun Takip Platformu Hakkında</h1>
-                    <p>Üniversitemiz mezunları ile öğrencileri arasındaki bağı güçlendirmeyi, kariyer yolculuklarını görünür kılmayı ve köklü bir iletişim ağı inşa etmeyi amaçlıyoruz.</p>
-                </section>
+                .contact-card {
+                    max-width: 820px;
+                    margin: 0 auto;
+                    background-color: var(--bg-surface);
+                    border: 1px solid var(--border-subtle);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-md);
+                    overflow: hidden;
+                }
+                .contact-card-header {
+                    background-color: var(--brand-navy);
+                    color: #FFFFFF;
+                    padding: 20px 28px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                    flex-wrap: wrap;
+                }
+                .contact-card-header h2 {
+                    color: #FFFFFF;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                }
+                .contact-card-body {
+                    padding: 28px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 24px;
+                    flex-wrap: wrap;
+                }
+                .contact-card-body p {
+                    margin: 0;
+                    color: var(--text-secondary);
+                    max-width: 480px;
+                    font-size: 0.95rem;
+                }
+                .contact-actions {
+                    display: flex;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+                @media (max-width: 1023px) {
+                    .pillars-grid { grid-template-columns: repeat(2, 1fr); }
+                }
+                @media (max-width: 767px) {
+                    .about-hero { padding: 44px 0; }
+                    .pillars-grid, .principles-grid { grid-template-columns: 1fr; }
+                }
+                """;
 
-                <section class="features-section">
-                    <div class="cards">
-                        <div class="card">
-                            <div class="card-icon">🤝</div>
-                            <h3>Mezun İletişim Ağı</h3>
-                            <p>Yıllara ve bölümlere göre mezunların güncel iletişim ve şirket bilgilerine erişim sağlayarak ağınızı genişletin.</p>
-                        </div>
-                        <div class="card">
-                            <div class="card-icon">🚀</div>
-                            <h3>Kariyer ve Mentorluk</h3>
-                            <p>Yeni mezun ve öğrencilere yönelik staj, iş fırsatları ve sektör rehberliği imkanlarıyla kariyerinize yön verin.</p>
-                        </div>
-                        <div class="card">
-                            <div class="card-icon">🏢</div>
-                            <h3>Üniversite & Sanayi Köprüsü</h3>
-                            <p>Mezunların çalıştığı kurumlarla üniversite arasındaki iş birliklerini artırarak akademi ve sektörü buluşturuyoruz.</p>
+        const string aboutMain = """
+                <section class="about-hero">
+                    <div class="container">
+                        <span class="eyebrow-badge">
+                            <span class="eyebrow-dot" aria-hidden="true"></span>
+                            Platform Misyonu &amp; Kurumsal Vizyon
+                        </span>
+                        <h1>Mezun Takip Platformu Hakkında</h1>
+                        <p>
+                            Üniversitemiz mezunları ile mevcut öğrenciler arasındaki bağı güçlendirmeyi, kariyer yolculuklarını ilişkisel olarak görünür kılmayı ve köklü bir akademik iletişim ağı inşa etmeyi amaçlıyoruz.
+                        </p>
+                        <div class="about-hero-actions">
+                            <a href="/users" class="btn btn-gold">Mezun Dizinini Keşfet</a>
+                            <a href="/jobs" class="btn btn-outline">Açık İlanları Gör</a>
                         </div>
                     </div>
                 </section>
 
-                <section class="contact-section">
-                    <h2>İletişim</h2>
-                    <p>Kariyer Merkezi & Mezunlar Ofisi ile iletişime geçmek için: <br> 
-                    <a href="mailto:alumni@ogr.iu.edu.tr" class="email-link">alumni@ogr.iu.edu.tr</a></p>
+                <section class="page-section">
+                    <div class="container">
+                        <div class="section-header">
+                            <div>
+                                <span class="section-kicker">Temel Değer Önerisi</span>
+                                <h2 class="section-title">Neden Alumni Tracking System?</h2>
+                                <p class="section-desc">Akademi ile iş dünyasını güvenilir, doğrulanmış ve sürdürülebilir bir veri mimarisi altında buluşturuyoruz.</p>
+                            </div>
+                        </div>
+
+                        <div class="pillars-grid">
+                            <article class="pillar-card">
+                                <div class="pillar-icon" aria-hidden="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <h3>Mezun İletişim Ağı</h3>
+                                <p>Yıllara, fakültelere ve bölümlere göre mezunların güncel kariyer, unvan ve kurum bilgilerine erişim sağlayarak profesyonel ağınızı genişletin.</p>
+                            </article>
+
+                            <article class="pillar-card">
+                                <div class="pillar-icon" aria-hidden="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect width="20" height="14" x="2" y="7" rx="2"/>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                    </svg>
+                                </div>
+                                <h3>Kariyer ve Mentorluk</h3>
+                                <p>Yeni mezun ve öğrencilere yönelik staj, tam zamanlı iş fırsatları ve sektörel mentorluk kanallarıyla kariyer planlamasına doğrudan yön verin.</p>
+                            </article>
+
+                            <article class="pillar-card">
+                                <div class="pillar-icon" aria-hidden="true">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 21h18"/>
+                                        <path d="M5 21V7l8-4v18"/>
+                                        <path d="M19 21V11l-6-4"/>
+                                        <path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/>
+                                    </svg>
+                                </div>
+                                <h3>Üniversite &amp; Sanayi Köprüsü</h3>
+                                <p>Mezunların görev aldığı kurumlarla üniversite arasındaki iş birliklerini güçlendirerek istihdam analitiği ve kurumsal ortaklıkları destekliyoruz.</p>
+                            </article>
+                        </div>
+                    </div>
                 </section>
-            </main>
-        </body>
-        </html>
-        """;
+
+                <section class="page-section surface-band">
+                    <div class="container">
+                        <div class="section-header">
+                            <div>
+                                <span class="section-kicker">Kurumsal İş Kuralları</span>
+                                <h2 class="section-title">Platform Güvenilirlik İlkeleri</h2>
+                                <p class="section-desc">Sistemdeki tüm veriler PostgreSQL ilişkisel bütünlüğü ve kurumsal doğrulama kuralları çerçevesinde yönetilir.</p>
+                            </div>
+                        </div>
+
+                        <div class="principles-grid">
+                            <div class="principle-item">
+                                <span class="principle-step tabular-nums">01</span>
+                                <div>
+                                    <h3>Doğrulanmış Mezun Profilleri</h3>
+                                    <p>Genel aramalarda ve istihdam istatistiklerinde yalnızca Kariyer Merkezi onayından geçmiş (<span class="mono">Approved</span>) mezun profilleri yer alır.</p>
+                                </div>
+                            </div>
+
+                            <div class="principle-item">
+                                <span class="principle-step tabular-nums">02</span>
+                                <div>
+                                    <h3>Aktif İstihdam Bütünlüğü</h3>
+                                    <p>Mezunların geçmiş deneyimleri kronolojik olarak saklanırken aynı anda yalnızca bir adet güncel aktif pozisyon (<span class="mono">IsCurrent</span>) tutulur.</p>
+                                </div>
+                            </div>
+
+                            <div class="principle-item">
+                                <span class="principle-step tabular-nums">03</span>
+                                <div>
+                                    <h3>Tekil Başvuru Güvencesi</h3>
+                                    <p>İş ve staj ilanlarına yapılan başvurularda mükerrer kayıtlar veritabanı seviyesinde engellenir; tüm aşamalar şeffaf biçimde izlenir.</p>
+                                </div>
+                            </div>
+
+                            <div class="principle-item">
+                                <span class="principle-step tabular-nums">04</span>
+                                <div>
+                                    <h3>Dağıtılmış MVC &amp; Açık API</h3>
+                                    <p>Hem Razor MVC ekranları hem de <span class="mono">/api/swagger</span> üzerinden erişilen RESTful uç noktalar aynı servis katmanını paylaşır.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="page-section">
+                    <div class="container">
+                        <div class="contact-card">
+                            <div class="contact-card-header">
+                                <h2>Kariyer Merkezi &amp; Mezunlar Ofisi İletişim</h2>
+                                <span class="badge badge-gold">Resmî Destek Hattı</span>
+                            </div>
+                            <div class="contact-card-body">
+                                <p>
+                                    Mezun profil doğrulamaları, kurumsal iş ilanı ortaklıkları veya platform geri bildirimleriniz için Mezunlar Ofisi ile doğrudan iletişime geçebilirsiniz.
+                                </p>
+                                <div class="contact-actions">
+                                    <a href="mailto:alumni@ogr.iu.edu.tr" class="btn btn-gold">alumni@ogr.iu.edu.tr</a>
+                                    <a href="/" class="btn btn-outline">Ana Sayfaya Dön</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                """;
+
+        return RenderPageShell("Hakkında — Alumni Tracking System", "/about", aboutCss, aboutMain);
     }
 
     public static string GetNotFoundPageHtml(string? requestedPath = null, string? reason = null)
     {
-        var displayPath = string.IsNullOrWhiteSpace(requestedPath) ? "Bilinmeyen Rota" : requestedPath;
-        var displayReason = string.IsNullOrWhiteSpace(reason) 
-            ? "Aradığınız sayfa silinmiş, adı değiştirilmiş veya geçici olarak kullanım dışı kalmış olabilir." 
-            : reason;
+        var displayPath = System.Net.WebUtility.HtmlEncode(
+            string.IsNullOrWhiteSpace(requestedPath) ? "Bilinmeyen Rota" : requestedPath);
+        var displayReason = System.Net.WebUtility.HtmlEncode(
+            string.IsNullOrWhiteSpace(reason)
+                ? "Aradığınız sayfa silinmiş, adı değiştirilmiş veya geçici olarak kullanım dışı kalmış olabilir."
+                : reason);
 
-        return $$"""
-        <!DOCTYPE html>
-        <html lang="tr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>404 - Sayfa Bulunamadı | Alumni Tracking System</title>
-            <style>
-                :root {
-                    --primary: #4F46E5;
-                    --primary-hover: #4338CA;
-                    --bg: #F9FAFB;
-                    --card-bg: #FFFFFF;
-                    --text: #111827;
-                    --text-muted: #6B7280;
-                    --border: #E5E7EB;
-                    --danger: #EF4444;
-                    --danger-bg: #FEF2F2;
-                }
-                * { box-sizing: border-box; }
-                body {
-                    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-                    margin: 0;
-                    background-color: var(--bg);
-                    color: var(--text);
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 100vh;
-                }
-                header {
-                    background: var(--card-bg);
-                    padding: 1rem 2rem;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid var(--border);
-                }
-                .logo {
-                    font-size: 1.25rem;
-                    font-weight: bold;
-                    color: var(--primary);
-                    text-decoration: none;
-                }
-                main {
-                    flex: 1;
+        const string notFoundCss = """
+                .not-found-wrap {
+                    padding: 64px 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 2rem;
                 }
                 .error-card {
-                    background: var(--card-bg);
-                    max-width: 620px;
+                    background-color: var(--bg-surface);
+                    max-width: 640px;
                     width: 100%;
-                    border-radius: 1rem;
-                    padding: 3rem 2.5rem;
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-                    border: 1px solid var(--border);
+                    border-radius: var(--radius-lg);
+                    border: 1px solid var(--border-subtle);
+                    box-shadow: var(--shadow-md);
+                    overflow: hidden;
+                }
+                .error-card-banner {
+                    background-color: var(--brand-navy);
+                    color: #FFFFFF;
+                    padding: 14px 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .error-banner-title {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: 0.875rem;
+                    font-weight: 700;
+                    letter-spacing: 0.02em;
+                }
+                .error-banner-code {
+                    font-size: 0.75rem;
+                    color: #FEF3C7;
+                    background-color: rgba(255, 255, 255, 0.14);
+                    padding: 3px 10px;
+                    border-radius: var(--radius-pill);
+                    font-weight: 600;
+                }
+                .error-card-body {
+                    padding: 36px 32px;
                     text-align: center;
                 }
                 .error-code {
-                    font-size: 5.5rem;
-                    font-weight: 900;
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-size: clamp(3.5rem, 8vw, 5rem);
+                    font-weight: 800;
                     line-height: 1;
-                    color: var(--primary);
-                    letter-spacing: -2px;
-                    margin-bottom: 0.5rem;
+                    color: var(--brand-navy);
+                    letter-spacing: -0.04em;
+                    margin-bottom: 12px;
                 }
                 .error-badge {
-                    display: inline-block;
-                    background: var(--danger-bg);
-                    color: var(--danger);
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 9999px;
-                    font-size: 0.875rem;
+                    display: inline-flex;
+                    align-items: center;
+                    background-color: var(--status-danger-tint);
+                    color: var(--status-danger);
+                    border: 1px solid #FECACA;
+                    padding: 4px 12px;
+                    border-radius: var(--radius-pill);
+                    font-size: 0.75rem;
                     font-weight: 600;
-                    margin-bottom: 1.25rem;
+                    margin-bottom: 16px;
                 }
-                h1 {
-                    font-size: 1.75rem;
-                    margin: 0 0 0.75rem 0;
-                    color: var(--text);
+                .error-card-body h1 {
+                    font-size: 1.625rem;
+                    font-weight: 700;
+                    letter-spacing: -0.02em;
+                    margin-bottom: 10px;
                 }
-                p.lead {
-                    font-size: 1rem;
-                    color: var(--text-muted);
-                    margin: 0 0 1.5rem 0;
-                    line-height: 1.6;
+                .error-lead {
+                    color: var(--text-secondary);
+                    font-size: 0.95rem;
+                    margin: 0 0 24px;
                 }
                 .path-box {
-                    background: #F3F4F6;
-                    border: 1px dashed var(--border);
-                    padding: 0.75rem 1rem;
-                    border-radius: 0.5rem;
-                    margin-bottom: 1.5rem;
-                    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-                    font-size: 0.9rem;
-                    color: #374151;
+                    background-color: var(--bg-surface-subtle);
+                    border: 1px solid var(--border-subtle);
+                    padding: 12px 16px;
+                    border-radius: var(--radius-md);
+                    margin-bottom: 14px;
+                    font-size: 0.875rem;
+                    color: var(--text-primary);
+                    text-align: left;
                     word-break: break-all;
                 }
                 .reason-box {
-                    background: #FFFBEB;
-                    border-left: 4px solid #F59E0B;
-                    padding: 0.75rem 1rem;
-                    border-radius: 0.375rem;
-                    margin-bottom: 2rem;
+                    background-color: var(--status-warning-tint);
+                    border: 1px solid #FDE68A;
+                    border-left: 4px solid var(--accent-gold);
+                    padding: 12px 16px;
+                    border-radius: var(--radius-md);
+                    margin-bottom: 28px;
                     text-align: left;
                     font-size: 0.875rem;
                     color: #92400E;
                 }
-                .button-group {
+                .error-actions {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 0.75rem;
+                    gap: 10px;
                     justify-content: center;
                 }
-                .btn {
-                    padding: 0.75rem 1.25rem;
-                    border-radius: 0.5rem;
-                    text-decoration: none;
-                    font-weight: 600;
-                    font-size: 0.925rem;
-                    transition: all 0.2s;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.35rem;
+                @media (max-width: 767px) {
+                    .not-found-wrap { padding: 36px 0; }
+                    .error-card-body { padding: 28px 20px; }
                 }
-                .btn-primary {
-                    background: var(--primary);
-                    color: white;
-                }
-                .btn-primary:hover {
-                    background: var(--primary-hover);
-                }
-                .btn-secondary {
-                    background: #F3F4F6;
-                    color: var(--text);
-                    border: 1px solid var(--border);
-                }
-                .btn-secondary:hover {
-                    background: #E5E7EB;
-                }
-            </style>
-        </head>
-        <body>
-            <header>
-                <a href="/" class="logo">🎓 Alumni Tracking System</a>
-                <nav>
-                    <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">← Ana Sayfa</a>
-                </nav>
-            </header>
-            
-            <main>
-                <div class="error-card">
-                    <div class="error-code">404</div>
-                    <div class="error-badge">Sayfa Bulunamadı (Not Found)</div>
-                    <h1>Aradığınız Sayfaya Ulaşılamadı</h1>
-                    <p class="lead">Ulaşmaya çalıştığınız web adresi sunucuda bulunamadı veya taşınmış olabilir.</p>
+                """;
 
-                    <div class="path-box">
-                        <strong>Hedef Rota:</strong> {{displayPath}}
-                    </div>
+        var notFoundMain = $$"""
+                <section class="not-found-wrap">
+                    <div class="container" style="display:flex; justify-content:center;">
+                        <article class="error-card">
+                            <div class="error-card-banner">
+                                <span class="error-banner-title">Alumni Tracking System • Yönlendirme Koruyucusu</span>
+                                <span class="error-banner-code mono">HTTP 404</span>
+                            </div>
+                            <div class="error-card-body">
+                                <div class="error-code tabular-nums">404</div>
+                                <div class="error-badge">Sayfa Bulunamadı (Not Found)</div>
+                                <h1>Aradığınız Sayfaya Ulaşılamadı</h1>
+                                <p class="error-lead">Ulaşmaya çalıştığınız web adresi sunucuda bulunamadı veya taşınmış olabilir.</p>
 
-                    <div class="reason-box">
-                        <strong>Gerekçe:</strong> {{displayReason}}
-                    </div>
+                                <div class="path-box">
+                                    <strong>Hedef Rota:</strong> <span class="mono">{{displayPath}}</span>
+                                </div>
 
-                    <div class="button-group">
-                        <a href="/" class="btn btn-primary">🏠 Ana Sayfa</a>
-                        <a href="/jobs" class="btn btn-secondary">💼 İş İlanları</a>
-                        <a href="/users" class="btn btn-secondary">🎓 Mezunlar</a>
-                        <a href="/announcements" class="btn btn-secondary">📢 Duyurular</a>
+                                <div class="reason-box">
+                                    <strong>Gerekçe:</strong> {{displayReason}}
+                                </div>
+
+                                <div class="error-actions">
+                                    <a href="/" class="btn btn-gold">Ana Sayfaya Dön</a>
+                                    <a href="/users" class="btn btn-outline">Mezunlar</a>
+                                    <a href="/jobs" class="btn btn-outline">İş İlanları</a>
+                                    <a href="/announcements" class="btn btn-outline">Duyurular</a>
+                                </div>
+                            </div>
+                        </article>
                     </div>
-                </div>
-            </main>
-        </body>
-        </html>
-        """;
+                </section>
+                """;
+
+        return RenderPageShell("404 — Sayfa Bulunamadı | Alumni Tracking System", "", notFoundCss, notFoundMain);
     }
 }

@@ -1,128 +1,132 @@
 @model Alumni.Domain.Entities.User
+@{
+    ViewData["Title"] = $"Kullanıcı Detayları — {Model.FirstName} {Model.LastName}";
+    ViewData["ActiveNav"] = "/users";
+    var initials = $"{(string.IsNullOrWhiteSpace(Model.FirstName) ? "U" : Model.FirstName[0].ToString().ToUpper())}{(string.IsNullOrWhiteSpace(Model.LastName) ? "" : Model.LastName[0].ToString().ToUpper())}";
+}
 
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kullanıcı Detayları — @Model.FirstName @Model.LastName</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #1f2937; margin: 0; }
-        .container { max-width: 850px; margin: auto; background: white; padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-        h1 { color: #4F46E5; margin: 0; }
-        .detail-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
-        .detail-row { margin-bottom: 0.85rem; font-size: 1rem; display: flex; }
-        .detail-row:last-child { margin-bottom: 0; }
-        .detail-label { font-weight: bold; color: #4B5563; width: 140px; flex-shrink: 0; }
-        .role-badge { background-color: #EEF2FF; color: #4F46E5; padding: 3px 10px; border-radius: 9999px; font-weight: 600; font-size: 0.85rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1.5rem; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        th { background-color: #f3f4f6; color: #4b5563; font-weight: 600; }
-        .btn { display: inline-block; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; }
-        .btn-primary { background-color: #4F46E5; color: white; }
-        .btn-primary:hover { background-color: #4338CA; }
-        .btn-secondary { background-color: #E5E7EB; color: #374151; }
-        .btn-secondary:hover { background-color: #D1D5DB; }
-        .badge { background-color: #DEF7EC; color: #03543F; padding: 3px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>Kullanıcı Detayları</h1>
-                <p style="color: #6B7280; margin: 0.25rem 0 0 0;">Kullanıcı profili ve ilişkili iş ilanları</p>
-            </div>
-            <div>
-                <a href="/users" class="btn btn-secondary">← Kullanıcılara Dön</a>
-                <a href="/jobs" class="btn btn-secondary">💼 İlanlar</a>
-            </div>
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <span class="eyebrow-badge">
+                <span class="eyebrow-dot" aria-hidden="true"></span>
+                Mezun Profili &amp; İlişkili İlanlar
+            </span>
+            <h1 class="page-title">@Model.FirstName @Model.LastName</h1>
+            <p class="page-subtitle">Kullanıcı hesap bilgileri, mezuniyet detayları ve yayınladığı iş ilanları.</p>
         </div>
-
-        <div class="detail-card">
-            <div class="detail-row">
-                <span class="detail-label">Kullanıcı ID:</span>
-                <span><strong>#@Model.Id</strong></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Ad Soyad:</span>
-                <span>@Model.FirstName @Model.LastName</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">E-Posta:</span>
-                <span>@Model.Email</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Sistem Rolü:</span>
-                <span class="role-badge">@Model.Role</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Kayıt Tarihi:</span>
-                <span>@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</span>
-            </div>
-            @if (Model.Profile != null)
-            {
-                <div class="detail-row">
-                    <span class="detail-label">Bölüm & Yıl:</span>
-                    <span>@Model.Profile.Department (@Model.Profile.GraduationYear)</span>
-                </div>
-                @if (!string.IsNullOrEmpty(Model.Profile.CurrentCompany))
-                {
-                    <div class="detail-row">
-                        <span class="detail-label">Mevcut Şirket:</span>
-                        <span>@Model.Profile.CurrentCompany - @Model.Profile.CurrentTitle</span>
-                    </div>
-                }
-            }
-        </div>
-
-        <!-- HAFTA 06 MADDE 8: A page for one user, with their postings -->
-        <div style="border-top: 2px solid #E5E7EB; padding-top: 1.5rem; margin-top: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="color: #4F46E5; margin: 0;">💼 Bu Kullanıcının Açtığı İş İlanları (@(Model.JobPosts?.Count ?? 0))</h2>
-                <a href="/jobs" class="btn btn-primary" style="font-size: 0.85rem;">+ Yeni İlan Aç</a>
-            </div>
-
-            @if (Model.JobPosts == null || Model.JobPosts.Count == 0)
-            {
-                <div style="background-color: #F9FAFB; border: 1px dashed #D1D5DB; padding: 1.5rem; border-radius: 8px; text-align: center; margin-top: 1rem;">
-                    <p style="color: #6B7280; margin: 0; font-style: italic;">Bu kullanıcının henüz yayınladığı bir iş ilanı bulunmamaktadır (jobs: []).</p>
-                </div>
-            }
-            else
-            {
-                <table>
-                    <thead>
-                        <tr>
-                            <th>İlan ID</th>
-                            <th>Pozisyon / Başlık</th>
-                            <th>Firma</th>
-                            <th>Yayınlanma Tarihi</th>
-                            <th>İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var job in Model.JobPosts)
-                        {
-                            <tr>
-                                <td><strong>#@job.Id</strong></td>
-                                <td><strong>@job.Title</strong></td>
-                                <td><span class="badge">@job.Company</span></td>
-                                <td>@job.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                                <td>
-                                    <a href="/jobs/details/@job.Id" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;">Detay & Başvuranlar</a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-
-            <p style="margin-top: 1.5rem; font-size: 0.85rem; color: #6B7280;">
-                💡 <strong>DATA_DESIGN.md Silme Kuralı:</strong> Bu kullanıcının yayında olan iş ilanları mevcutsa, silme işlemi engellenir ve <code>409 Conflict</code> yanıtı verilir (Restrict kuralı).
-            </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="/users" class="btn btn-outline">← Mezunlara Dön</a>
+            <a href="/users/edit/@Model.Id" class="btn btn-navy">Profili Düzenle</a>
+            <a href="/jobs" class="btn btn-gold">Tüm İlanlar</a>
         </div>
     </div>
-</body>
-</html>
+</section>
+
+<section class="page-content">
+    <div class="container" style="display:grid; gap:24px;">
+        <article class="card">
+            <div class="card-navy-header">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="width:44px; height:44px; border-radius:50%; background:#FFFFFF; color:var(--brand-navy); border:2px solid var(--accent-gold); display:flex; align-items:center; justify-content:center; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800;">
+                        @initials
+                    </div>
+                    <div>
+                        <h2 style="margin:0;">@Model.FirstName @Model.LastName</h2>
+                        <div style="font-size:0.8125rem; color:#DBEAFE;">@Model.Email</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="badge badge-gold">@Model.Role</span>
+                    <span class="badge mono tabular-nums" style="background:rgba(255,255,255,0.14); color:#FFFFFF;">ID #@Model.Id</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item-label">Ad Soyad</div>
+                        <div class="detail-item-value">@Model.FirstName @Model.LastName</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">E-Posta Adresi</div>
+                        <div class="detail-item-value">@Model.Email</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">Sistem Rolü</div>
+                        <div class="detail-item-value"><span class="badge badge-navy">@Model.Role</span></div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">Kayıt Tarihi</div>
+                        <div class="detail-item-value tabular-nums">@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</div>
+                    </div>
+                    @if (Model.Profile != null)
+                    {
+                        <div class="detail-item">
+                            <div class="detail-item-label">Bölüm &amp; Mezuniyet Yılı</div>
+                            <div class="detail-item-value tabular-nums">@Model.Profile.Department (@Model.Profile.GraduationYear)</div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.Profile.CurrentCompany))
+                        {
+                            <div class="detail-item">
+                                <div class="detail-item-label">Mevcut Şirket &amp; Unvan</div>
+                                <div class="detail-item-value">@Model.Profile.CurrentCompany — @Model.Profile.CurrentTitle</div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </article>
+
+        <!-- HAFTA 06 MADDE 8: A page for one user, with their postings -->
+        <article class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Bu Kullanıcının Açtığı İş İlanları <span class="badge badge-navy tabular-nums" style="margin-left:6px;">@(Model.JobPosts?.Count ?? 0)</span></h2>
+                </div>
+                <a href="/jobs" class="btn btn-gold btn-sm">+ Yeni İlan Aç</a>
+            </div>
+            <div class="card-body">
+                @if (Model.JobPosts == null || Model.JobPosts.Count == 0)
+                {
+                    <div class="empty-state">
+                        <p style="margin:0;">Bu kullanıcının henüz yayınladığı bir iş ilanı bulunmamaktadır (<span class="mono">jobs: []</span>).</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>İlan ID</th>
+                                    <th>Pozisyon / Başlık</th>
+                                    <th>Firma</th>
+                                    <th>Yayınlanma Tarihi</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var job in Model.JobPosts)
+                                {
+                                    <tr>
+                                        <td class="mono tabular-nums"><strong>#@job.Id</strong></td>
+                                        <td><strong>@job.Title</strong></td>
+                                        <td><span class="badge badge-navy">@job.Company</span></td>
+                                        <td class="tabular-nums" style="color: var(--text-secondary);">@job.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>
+                                            <a href="/jobs/details/@job.Id" class="btn btn-outline btn-sm">Detay &amp; Başvuranlar</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="alert-warning" style="margin-top:20px;">
+                    <strong>DATA_DESIGN.md Silme Kuralı (Restrict):</strong> Bu kullanıcının yayında olan iş ilanları mevcutsa, doğrudan silme işlemi engellenir ve <span class="mono">409 Conflict</span> yanıtı döner.
+                </div>
+            </div>
+        </article>
+    </div>
+</section>

@@ -1,49 +1,60 @@
 @model Alumni.Domain.Entities.Announcement
+@{
+    ViewData["Title"] = $"Duyuru Detayı — {Model.Title}";
+    ViewData["ActiveNav"] = "/announcements";
+}
 
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duyuru Detayı - @Model.Title</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9fafb; padding: 2rem; color: #333; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #4F46E5; border-bottom: 2px solid #E5E7EB; padding-bottom: 0.5rem; margin-top: 0; }
-        .meta-row { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; color: #6B7280; font-size: 0.95rem; }
-        .content-box { background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 1.25rem; line-height: 1.6; margin-bottom: 2rem; white-space: pre-line; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; }
-        .badge-active { background-color: #D1FAE5; color: #065F46; }
-        .badge-inactive { background-color: #FEE2E2; color: #991B1B; }
-        .actions { display: flex; gap: 1rem; align-items: center; }
-        .btn-edit { background-color: #10B981; color: white; padding: 8px 15px; border-radius: 4px; text-decoration: none; font-weight: bold; }
-        .btn-edit:hover { background-color: #059669; }
-        .back-link { color: #4F46E5; text-decoration: none; font-weight: 500; }
-        .back-link:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>@Model.Title</h1>
-
-        <div class="meta-row">
-            <div><strong>Yayınlayan:</strong> @Model.Author</div>
-            <div><strong>Tarih:</strong> @Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</div>
-            <div>
-                <span class="badge @(Model.IsActive ? "badge-active" : "badge-inactive")">
-                    @(Model.IsActive ? "Aktif" : "Pasif")
-                </span>
-            </div>
+<section class="page-banner">
+    <div class="container-narrow page-banner-inner">
+        <div>
+            <span class="eyebrow-badge">
+                <span class="eyebrow-dot" aria-hidden="true"></span>
+                Kurumsal Duyuru
+            </span>
+            <h1 class="page-title">@Model.Title</h1>
+            <p class="page-subtitle">@Model.Author tarafından yayınlandı • <span class="tabular-nums">@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</span></p>
         </div>
-
-        <div class="content-box">
-            @Model.Content
-        </div>
-
-        <div class="actions">
-            <a href="/announcements/edit/@Model.Id" class="btn-edit">Düzenle</a>
-            <a href="/announcements" class="back-link">← Duyuru Listesine Dön</a>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="/announcements" class="btn btn-outline">← Duyurulara Dön</a>
+            <a href="/announcements/edit/@Model.Id" class="btn btn-navy">Düzenle</a>
         </div>
     </div>
-</body>
-</html>
+</section>
+
+<section class="page-content">
+    <div class="container-narrow">
+        <article class="card">
+            <div class="card-navy-header">
+                <h2 style="margin:0;">@Model.Title</h2>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="badge @(Model.IsActive ? "badge-success" : "badge-danger")">
+                        @(Model.IsActive ? "Aktif" : "Pasif")
+                    </span>
+                    <span class="badge mono tabular-nums" style="background:rgba(255,255,255,0.14); color:#FFFFFF;">ID #@Model.Id</span>
+                </div>
+            </div>
+            <div class="card-body" style="display:grid; gap:20px;">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item-label">Yayınlayan Birim / Kişi</div>
+                        <div class="detail-item-value">@Model.Author</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">Yayınlanma Tarihi</div>
+                        <div class="detail-item-value tabular-nums">@Model.CreatedAt.ToString("dd MMMM yyyy HH:mm")</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="font-size:1rem; margin-bottom:8px;">Duyuru Metni</h3>
+                    <div style="background:var(--bg-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px; color:var(--text-primary); white-space:pre-line; line-height:1.7;">@Model.Content</div>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; padding-top:8px; border-top:1px solid var(--border-subtle);">
+                    <a href="/announcements/edit/@Model.Id" class="btn btn-gold">Duyuruyu Düzenle</a>
+                    <a href="/announcements" class="btn btn-outline">Duyuru Listesine Dön</a>
+                </div>
+            </div>
+        </article>
+    </div>
+</section>
