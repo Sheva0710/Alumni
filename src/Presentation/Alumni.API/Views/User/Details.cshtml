@@ -1,7 +1,11 @@
 @model Alumni.Domain.Entities.User
+@using Alumni.API.Common
 @{
+    var currentUserId = User.GetUserId();
+    var isOwnProfile = currentUserId.HasValue && currentUserId.Value == Model.Id;
+    var canEditProfile = User.IsAdminRole() || isOwnProfile;
     ViewData["Title"] = $"Kullanıcı Detayları — {Model.FirstName} {Model.LastName}";
-    ViewData["ActiveNav"] = "/users";
+    ViewData["ActiveNav"] = isOwnProfile && !User.IsAdminRole() ? $"/users/details/{Model.Id}" : "/users";
     var initials = $"{(string.IsNullOrWhiteSpace(Model.FirstName) ? "U" : Model.FirstName[0].ToString().ToUpper())}{(string.IsNullOrWhiteSpace(Model.LastName) ? "" : Model.LastName[0].ToString().ToUpper())}";
 }
 
@@ -17,7 +21,10 @@
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <a href="/users" class="btn btn-outline">← Mezunlara Dön</a>
-            <a href="/users/edit/@Model.Id" class="btn btn-navy">Profili Düzenle</a>
+            @if (canEditProfile)
+            {
+                <a href="/users/edit/@Model.Id" class="btn btn-navy">Profili Düzenle</a>
+            }
             <a href="/jobs" class="btn btn-gold">Tüm İlanlar</a>
         </div>
     </div>

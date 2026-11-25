@@ -1,4 +1,6 @@
+using System.Linq;
 using System.Threading.Tasks;
+using Alumni.API.Common;
 using Alumni.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +28,12 @@ namespace Alumni.API.Controllers
         public async Task<IActionResult> Index()
         {
             var applications = await _applicationService.GetAllAsync();
+            if (!User.IsAdminRole())
+            {
+                var currentUserId = User.GetUserId();
+                applications = applications.Where(a => a.UserId == currentUserId).ToList();
+            }
+
             ViewBag.Users = await _userService.GetAllAsync();
             ViewBag.Jobs = await _jobPostService.GetAllAsync();
 
@@ -35,20 +43,40 @@ namespace Alumni.API.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromForm] int userId, [FromForm] int jobPostId)
         {
-            if (userId <= 0 || jobPostId <= 0)
+            // Güvenlik (self): Başvuran daima oturumdaki kullanıcıdır; formdaki userId yok sayılır.
+            var currentUserId = User.GetUserId();
+            if (!currentUserId.HasValue)
             {
-                TempData["ErrorMessage"] = "Lütfen geçerli bir aday ve iş ilanı seçiniz.";
+                return Redirect("/login?returnUrl=/applications");
+            }
+
+            if (User.IsAdminRole())
+            {
+                TempData["ErrorMessage"] = "Admin rolündeki kullanıcılar iş ilanlarına başvuru yapamaz.";
                 return Redirect("/applications");
             }
 
-            var result = await _applicationService.ApplyAsync(jobPostId, userId);
+            if (jobPostId <= 0)
+            {
+                TempData["ErrorMessage"] = "Lütfen geçerli bir iş ilanı seçiniz.";
+                return Redirect("/applications");
+            }
+
+            var job = await _jobPostService.GetByIdAsync(jobPostId);
+            if (job != null && job.PostedByUserId == currentUserId.Value)
+            {
+                TempData["ErrorMessage"] = "Kendi yayınladığınız iş ilanına başvuru yapamazsınız.";
+                return Redirect("/applications");
+            }
+
+            var result = await _applicationService.ApplyAsync(jobPostId, currentUserId.Value);
             if (result.Status == ApplyResultStatus.Success)
             {
                 TempData["SuccessMessage"] = "İş başvurusu başarıyla oluşturuldu.";
             }
             else if (result.Status == ApplyResultStatus.AlreadyApplied)
             {
-                TempData["ErrorMessage"] = "Seçilen aday bu ilana daha önce başvuruda bulunmuş (Mükerrer başvuru engellendi).";
+                TempData["ErrorMessage"] = "Bu ilana daha önce başvuruda bulundunuz (Mükerrer başvuru engellendi).";
             }
             else
             {
@@ -83,16 +111,21 @@ namespace Alumni.API.Controllers
         [HttpPost("delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _applicationService.DeleteAsync(id);
-            if (deleted)
-            {
-                TempData["SuccessMessage"] = "Başvuru başarıyla iptal edildi / silindi.";
-            }
-            else
+            var application = await _applicationService.GetByIdAsync(id);
+            if (application == null)
             {
                 TempData["ErrorMessage"] = "Başvuru bulunamadı.";
+                return Redirect("/applications");
             }
 
+            if (!User.IsAdminRole() && application.UserId != User.GetUserId())
+            {
+                TempData["ErrorMessage"] = "Yalnızca kendi başvurunuzu iptal edebilirsiniz.";
+                return Redirect("/applications");
+            }
+
+            await _applicationService.DeleteAsync(id);
+            TempData["SuccessMessage"] = "Başvuru başarıyla iptal edildi / silindi.";
             return Redirect("/applications");
         }
     }

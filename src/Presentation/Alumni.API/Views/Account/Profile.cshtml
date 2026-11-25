@@ -1,0 +1,374 @@
+@model Alumni.API.Common.UserProfileViewModel
+@{
+    ViewData["Title"] = "Profilim";
+    ViewData["ActiveNav"] = "/profile";
+    var user = Model.User;
+    var profile = user.Profile;
+    var isAdmin = string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+    var initials = $"{(string.IsNullOrWhiteSpace(user.FirstName) ? "U" : user.FirstName[0].ToString().ToUpper())}{(string.IsNullOrWhiteSpace(user.LastName) ? "" : user.LastName[0].ToString().ToUpper())}";
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+    var errorMessage = TempData["ErrorMessage"]?.ToString();
+}
+
+@section Styles {
+    <style>
+        .profile-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .profile-hero-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .profile-identity {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .avatar-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #FFFFFF;
+            color: var(--brand-navy);
+            border: 3px solid var(--accent-gold);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .stat-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-box-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-box-val {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--brand-navy);
+        }
+
+        .form-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .mini-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mini-item {
+            padding: 12px 14px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            background-color: var(--bg-canvas);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        @@media (max-width: 960px) {
+            .profile-layout { grid-template-columns: 1fr; }
+            .stat-strip { grid-template-columns: 1fr; }
+        }
+
+        @@media (max-width: 600px) {
+            .form-row-2 { grid-template-columns: 1fr; gap: 0; }
+        }
+    </style>
+}
+
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <div class="eyebrow-badge">
+                <span class="eyebrow-dot"></span>
+                Kişisel Alan • @user.Role
+            </div>
+            <h1 class="page-title">@user.FirstName @user.LastName</h1>
+            <p class="page-subtitle">
+                Akademik ve kariyer profilinizi güncel tutun, yayınladığınız ilanları ve başvurularınızı tek yerden takip edin.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/settings" class="btn btn-navy">Hesap Ayarları</a>
+            @if (isAdmin)
+            {
+                <a href="/admin" class="btn btn-gold">Admin Panel</a>
+            }
+            else
+            {
+                <a href="/jobs" class="btn btn-gold">İş İlanlarına Göz At</a>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="container">
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert-success" role="status">@successMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert-danger" role="alert">@errorMessage</div>
+        }
+
+        <!-- Özet İstatistik Şeridi -->
+        <div class="stat-strip">
+            <div class="stat-box">
+                <div class="stat-box-label">Akademik Statü</div>
+                <div class="stat-box-val">@Model.AcademicStatus</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-label">Yayınladığım İlanlar</div>
+                <div class="stat-box-val tabular-nums">@Model.JobPosts.Count</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-label">İş Başvurularım</div>
+                <div class="stat-box-val tabular-nums">@Model.Applications.Count</div>
+            </div>
+        </div>
+
+        <div class="profile-layout">
+            <!-- Sol Sütun: Kişisel Kimlik + Mezun Profil Düzenleme Formu -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card">
+                    <div class="card-navy-header">
+                        <div class="profile-hero-card" style="width: 100%;">
+                            <div class="profile-identity">
+                                <div class="avatar-circle">@initials</div>
+                                <div>
+                                    <h2 style="margin-bottom: 2px;">@user.FirstName @user.LastName</h2>
+                                    <div style="font-size: 0.85rem; color: #DBEAFE;">@user.Email</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span class="badge @(isAdmin ? "badge-gold" : "badge-success")">@user.Role</span>
+                                <span class="badge mono" style="background: rgba(255,255,255,0.14); color: #FFFFFF;">ID #@user.Id</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-item-label">Kayıt Tarihi</div>
+                                <div class="detail-item-value tabular-nums">@user.CreatedAt.ToString("dd.MM.yyyy")</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item-label">Bölüm &amp; Yıl</div>
+                                <div class="detail-item-value">
+                                    @(profile != null ? $"{profile.Department} ({profile.GraduationYear})" : "Henüz girilmedi")
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item-label">Mevcut Pozisyon</div>
+                                <div class="detail-item-value">
+                                    @(profile != null && (!string.IsNullOrWhiteSpace(profile.CurrentTitle) || !string.IsNullOrWhiteSpace(profile.CurrentCompany))
+                                        ? $"{profile.CurrentTitle ?? "—"} @ {profile.CurrentCompany ?? "—"}"
+                                        : "Henüz girilmedi")
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mezun Profil Bilgileri Güncelleme Formu -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Akademik &amp; Kariyer Bilgilerimi Güncelle</h3>
+                        <span class="badge badge-navy">Yalnızca Kendi Profiliniz</span>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/profile">
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label" for="Department">Bölüm *</label>
+                                    <input type="text"
+                                           id="Department"
+                                           name="Department"
+                                           class="form-control"
+                                           value="@profile?.Department"
+                                           placeholder="Örn. Bilgisayar Mühendisliği"
+                                           maxlength="150"
+                                           required />
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="GraduationYear">Mezuniyet Yılı *</label>
+                                    <input type="number"
+                                           id="GraduationYear"
+                                           name="GraduationYear"
+                                           class="form-control tabular-nums"
+                                           value="@profile?.GraduationYear"
+                                           placeholder="Örn. 2025"
+                                           min="1950"
+                                           max="2100"
+                                           required />
+                                </div>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label class="form-label" for="CurrentCompany">Mevcut Şirket</label>
+                                    <input type="text"
+                                           id="CurrentCompany"
+                                           name="CurrentCompany"
+                                           class="form-control"
+                                           value="@profile?.CurrentCompany"
+                                           placeholder="Örn. Acme Teknoloji"
+                                           maxlength="200" />
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="CurrentTitle">Pozisyon / Unvan</label>
+                                    <input type="text"
+                                           id="CurrentTitle"
+                                           name="CurrentTitle"
+                                           class="form-control"
+                                           value="@profile?.CurrentTitle"
+                                           placeholder="Örn. Software Engineer"
+                                           maxlength="150" />
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="LinkedInUrl">LinkedIn Profil Bağlantısı</label>
+                                <input type="url"
+                                       id="LinkedInUrl"
+                                       name="LinkedInUrl"
+                                       class="form-control"
+                                       value="@profile?.LinkedInUrl"
+                                       placeholder="https://linkedin.com/in/kullanici-adiniz"
+                                       maxlength="500" />
+                                <div class="form-hint">Opsiyonel; doldurulursa <code>https://linkedin.com/in/...</code> ile başlamalıdır.</div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button type="submit" class="btn btn-gold">Profili Kaydet</button>
+                                <a href="/settings" class="btn btn-outline">Ad / E-posta / Şifre Ayarları →</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ Sütun: İlanlarım ve Başvurularım -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Yayınladığım İş İlanları</h3>
+                        <span class="badge badge-navy">@Model.JobPosts.Count</span>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.JobPosts.Count == 0)
+                        {
+                            <div class="empty-state">
+                                Henüz yayınladığınız bir iş ilanı bulunmuyor.
+                                <div style="margin-top: 12px;">
+                                    <a href="/jobs" class="btn btn-sm btn-navy">İş İlanı Yayınla</a>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mini-list">
+                                @foreach (var job in Model.JobPosts)
+                                {
+                                    <div class="mini-item">
+                                        <div>
+                                            <strong>@job.Title</strong>
+                                            <div style="font-size: 0.82rem; color: var(--text-secondary);">
+                                                @job.Company @(string.IsNullOrWhiteSpace(job.City) ? "" : $"• {job.City}")
+                                            </div>
+                                        </div>
+                                        <a href="/jobs/details/@job.Id" class="btn btn-sm btn-outline">İncele</a>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (!isAdmin)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Başvurularım</h3>
+                            <span class="badge badge-gold">@Model.Applications.Count</span>
+                        </div>
+                        <div class="card-body">
+                            @if (Model.Applications.Count == 0)
+                            {
+                                <div class="empty-state">
+                                    Henüz bir iş ilanına başvuru yapmadınız.
+                                    <div style="margin-top: 12px;">
+                                        <a href="/jobs" class="btn btn-sm btn-gold">Açık İlanları Gör</a>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mini-list">
+                                    @foreach (var app in Model.Applications)
+                                    {
+                                        <div class="mini-item">
+                                            <div>
+                                                <strong>@app.JobTitle</strong>
+                                                <div style="font-size: 0.82rem; color: var(--text-secondary);">
+                                                    @app.Company • @app.AppliedAt.ToString("dd.MM.yyyy")
+                                                </div>
+                                            </div>
+                                            <span class="badge @(app.Status == "Accepted" ? "badge-success" : app.Status == "Rejected" ? "badge-danger" : "badge-navy")">
+                                                @app.Status
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>

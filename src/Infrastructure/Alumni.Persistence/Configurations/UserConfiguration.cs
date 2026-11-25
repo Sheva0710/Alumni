@@ -18,6 +18,7 @@ namespace Alumni.Persistence.Configurations
             builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(255).IsRequired();
             builder.HasIndex(u => u.Email).IsUnique().HasDatabaseName("ix_users_email");
 
+            builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(255).IsRequired().HasDefaultValue(string.Empty);
             builder.Property(u => u.Role).HasColumnName("role").HasMaxLength(50).IsRequired().HasDefaultValue("Alumni");
             builder.Property(u => u.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 

@@ -1,3 +1,4 @@
+using Alumni.API.Common;
 using Alumni.Application.DTOs.Applications;
 using Alumni.Application.DTOs.Jobs;
 using Alumni.Application.DTOs.Users;
@@ -30,13 +31,14 @@ namespace Alumni.API.Controllers
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userService.GetAllAsync();
-            return Ok(users);
+            var safeUsers = users.Select(u => UserResponseDto.FromEntity(u, includeJobs: false)).ToList();
+            return Ok(safeUsers);
         }
 
         /// <summary>
         /// GET /api/users/{id}
         /// Include / Eager Loading kuralı: Kullanıcı detayını ve varsa açtığı iş ilanlarını (jobs: [...]) tek yanıtta döner.
-        /// İlanı yoksa bile jobs: [] boş dizisi döner.
+        /// İlanı yoksa bile jobs: [] boş dizisi döner. passwordHash asla döndürülmez.
         /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUser(int id)
@@ -44,44 +46,55 @@ namespace Alumni.API.Controllers
             var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            return Ok(new
-            {
-                user.Id,
-                user.FirstName,
-                user.LastName,
-                user.Email,
-                user.Role,
-                user.CreatedAt,
-                user.Profile,
-                Jobs = user.JobPosts ?? new List<JobPost>()
-            });
+            return Ok(UserResponseDto.FromEntity(user, includeJobs: true));
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
-                return BadRequest("Ad ve e-posta zorunludur.");
+                return BadRequest(new { error = "Ad ve e-posta zorunludur." });
+
+            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            if (await _userService.GetByEmailAsync(normalizedEmail) != null)
+                return Conflict(new { error = "Bu e-posta adresiyle kayıtlı bir hesap zaten mevcut." });
+
+            var plainPassword = string.IsNullOrWhiteSpace(request.Password) ? "secret123" : request.Password;
+            if (plainPassword.Length < 6)
+                return BadRequest(new { error = "Şifre en az 6 karakter olmalıdır." });
+
+            var assignedRole = "Alumni";
+            if (User.IsAdminRole() &&
+                (string.Equals(request.Role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(request.Role, "Alumni", StringComparison.OrdinalIgnoreCase)))
+            {
+                assignedRole = string.Equals(request.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "Alumni";
+            }
 
             var newUser = new User
             {
-                FirstName = request.FirstName,
-                LastName = request.LastName ?? string.Empty,
-                Email = request.Email,
-                Role = request.Role ?? "Alumni"
+                FirstName = request.FirstName.Trim(),
+                LastName = request.LastName?.Trim() ?? string.Empty,
+                Email = normalizedEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword, workFactor: 12),
+                // DATA_DESIGN.md: Açık kayıtta rol her zaman Alumni (graduate) olarak atanır; yalnızca Admin rol belirleyebilir.
+                Role = assignedRole
             };
 
             await _userService.AddAsync(newUser);
-            return Created($"/api/users/{newUser.Id}", newUser);
+            return Created($"/api/users/{newUser.Id}", UserResponseDto.FromEntity(newUser, includeJobs: false));
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
         {
-            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
+            // Güvenlik: Alumni kendi profilini güncellerken kendi rolünü Admin'e yükseltemez
+            var safeRole = User.IsAdminRole() ? request.Role : null;
+            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, safeRole);
             if (!updated) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            return Ok(await _userService.GetByIdAsync(id));
+            var user = await _userService.GetByIdAsync(id);
+            return Ok(UserResponseDto.FromEntity(user!, includeJobs: true));
         }
 
         [HttpPatch("{id}")]
@@ -90,8 +103,11 @@ namespace Alumni.API.Controllers
             var user = await _userService.GetByIdAsync(id);
             if (user == null) return NotFound(new { message = $"ID {id} olan kullanıcı bulunamadı." });
 
-            await _userService.PatchAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
-            return Ok(await _userService.GetByIdAsync(id));
+            // Güvenlik: Alumni kendi profilini güncellerken rol yükseltemez
+            var safeRole = User.IsAdminRole() ? request.Role : null;
+            await _userService.PatchAsync(id, request.FirstName, request.LastName, request.Email, safeRole);
+            var updatedUser = await _userService.GetByIdAsync(id);
+            return Ok(UserResponseDto.FromEntity(updatedUser!, includeJobs: true));
         }
 
         /// <summary>

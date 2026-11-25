@@ -1,0 +1,432 @@
+@model Alumni.Application.DTOs.Auth.RegisterRequest
+@{
+    ViewData["Title"] = "Kayıt Ol";
+    ViewData["ActiveNav"] = "/register";
+    var errorMessage = ViewData["ErrorMessage"]?.ToString();
+    var successMessage = ViewData["SuccessMessage"]?.ToString();
+    var createdUserId = ViewData["CreatedUserId"];
+    var createdUserEmail = ViewData["CreatedUserEmail"]?.ToString();
+}
+
+@section Styles {
+    <style>
+        .register-grid {
+            display: grid;
+            grid-template-columns: 1.35fr 0.85fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .form-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 16px;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .section-divider::before,
+        .section-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background-color: var(--border-subtle);
+        }
+
+        .required-star {
+            color: var(--status-danger);
+            margin-left: 2px;
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap .form-control {
+            padding-right: 44px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            color: var(--brand-navy);
+            background-color: var(--bg-surface-subtle);
+        }
+
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .info-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .info-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-pill);
+            background-color: var(--brand-navy-tint);
+            color: var(--brand-navy);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .security-note {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            background-color: var(--bg-canvas);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.84rem;
+            color: var(--text-secondary);
+        }
+
+        .security-note strong {
+            color: var(--brand-navy);
+        }
+
+        .match-feedback {
+            font-size: 0.78rem;
+            margin-top: 4px;
+            min-height: 18px;
+        }
+
+        .match-ok { color: var(--status-success); font-weight: 500; }
+        .match-err { color: var(--status-danger); font-weight: 500; }
+
+        @@media (max-width: 960px) {
+            .register-grid { grid-template-columns: 1fr; }
+        }
+
+        @@media (max-width: 600px) {
+            .form-row-2 { grid-template-columns: 1fr; gap: 0; }
+        }
+    </style>
+}
+
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <div class="eyebrow-badge">
+                <span class="eyebrow-dot"></span>
+                Mezun Ağına Katıl • Yeni Hesap
+            </div>
+            <h1 class="page-title">Mezun Hesabı Oluştur</h1>
+            <p class="page-subtitle">
+                Üniversite mezun topluluğuna katılın, kariyer fırsatlarını inceleyin, iş ilanlarına başvurun ve mezun ağınızı güçlendirin.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/jobs" class="btn btn-outline">İş İlanlarını İncele</a>
+        </div>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="container">
+        <div class="register-grid">
+            <!-- Kayıt Formu Kartı -->
+            <div class="card">
+                <div class="card-navy-header">
+                    <h2>Kayıt Formu</h2>
+                    <span class="badge badge-gold">Rol: Alumni (Mezun)</span>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(successMessage))
+                    {
+                        <div class="alert-success" role="status">
+                            <div>@successMessage</div>
+                            @if (createdUserId != null)
+                            {
+                                <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <a href="/login" class="btn btn-sm btn-gold">Giriş Yap</a>
+                                    <a href="/users/details/@createdUserId" class="btn btn-sm btn-navy">Profili Görüntüle</a>
+                                    <a href="/jobs" class="btn btn-sm btn-outline">İş İlanlarına Git</a>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <form method="post" action="/register" id="registerForm" novalidate>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label class="form-label" for="FirstName">
+                                    Ad<span class="required-star">*</span>
+                                </label>
+                                <input type="text"
+                                       id="FirstName"
+                                       name="FirstName"
+                                       class="form-control"
+                                       value="@Model?.FirstName"
+                                       placeholder="Örn. Ada"
+                                       maxlength="100"
+                                       autocomplete="given-name"
+                                       required />
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="LastName">
+                                    Soyad<span class="required-star">*</span>
+                                </label>
+                                <input type="text"
+                                       id="LastName"
+                                       name="LastName"
+                                       class="form-control"
+                                       value="@Model?.LastName"
+                                       placeholder="Örn. Lovelace"
+                                       maxlength="100"
+                                       autocomplete="family-name"
+                                       required />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="Email">
+                                E-posta Adresi<span class="required-star">*</span>
+                            </label>
+                            <input type="email"
+                                   id="Email"
+                                   name="Email"
+                                   class="form-control"
+                                   value="@Model?.Email"
+                                   placeholder="ornek@universite.edu.tr"
+                                   maxlength="255"
+                                   autocomplete="email"
+                                   required />
+                            <div class="form-hint">Giriş yaparken kullanacağınız benzersiz e-posta adresiniz.</div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label class="form-label" for="Password">
+                                    Şifre<span class="required-star">*</span>
+                                </label>
+                                <div class="password-wrap">
+                                    <input type="password"
+                                           id="Password"
+                                           name="Password"
+                                           class="form-control"
+                                           placeholder="En az 6 karakter"
+                                           minlength="6"
+                                           autocomplete="new-password"
+                                           required />
+                                    <button type="button" class="password-toggle" data-target="Password" aria-label="Şifreyi göster veya gizle">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="form-hint">BCrypt (salt + hash) ile güvenle şifrelenir.</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="ConfirmPassword">
+                                    Şifre Tekrar<span class="required-star">*</span>
+                                </label>
+                                <div class="password-wrap">
+                                    <input type="password"
+                                           id="ConfirmPassword"
+                                           name="ConfirmPassword"
+                                           class="form-control"
+                                           placeholder="Şifrenizi tekrar girin"
+                                           minlength="6"
+                                           autocomplete="new-password"
+                                           required />
+                                    <button type="button" class="password-toggle" data-target="ConfirmPassword" aria-label="Şifre tekrarını göster veya gizle">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div id="passwordMatchFeedback" class="match-feedback"></div>
+                            </div>
+                        </div>
+
+                        <div class="section-divider">Mezun Profil Bilgileri (İsteğe Bağlı)</div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label class="form-label" for="Department">Bölüm</label>
+                                <input type="text"
+                                       id="Department"
+                                       name="Department"
+                                       class="form-control"
+                                       value="@Model?.Department"
+                                       placeholder="Örn. Bilgisayar Mühendisliği"
+                                       maxlength="150" />
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="GraduationYear">Mezuniyet Yılı</label>
+                                <input type="number"
+                                       id="GraduationYear"
+                                       name="GraduationYear"
+                                       class="form-control tabular-nums"
+                                       value="@Model?.GraduationYear"
+                                       placeholder="Örn. 2025"
+                                       min="1950"
+                                       max="2100" />
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label class="form-label" for="CurrentCompany">Mevcut Şirket</label>
+                                <input type="text"
+                                       id="CurrentCompany"
+                                       name="CurrentCompany"
+                                       class="form-control"
+                                       value="@Model?.CurrentCompany"
+                                       placeholder="Örn. Acme Teknoloji"
+                                       maxlength="200" />
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="CurrentTitle">Pozisyon / Unvan</label>
+                                <input type="text"
+                                       id="CurrentTitle"
+                                       name="CurrentTitle"
+                                       class="form-control"
+                                       value="@Model?.CurrentTitle"
+                                       placeholder="Örn. Backend Developer"
+                                       maxlength="150" />
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 22px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <button type="submit" class="btn btn-gold" style="min-width: 180px;">
+                                Hesap Oluştur
+                            </button>
+                            <a href="/login" class="btn btn-outline">Giriş Yap</a>
+                            <a href="/" class="btn btn-outline">Vazgeç</a>
+                        </div>
+                    </form>
+
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); font-size: 0.9rem; color: var(--text-secondary);">
+                        Zaten bir hesabınız var mı? <a href="/login" style="color: var(--brand-navy); font-weight: 600; text-decoration: none;">Giriş yapın →</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bilgi & Yetki Özeti Kartı -->
+            <aside class="card">
+                <div class="card-header">
+                    <h3>Mezun Hesabı Neler Yapabilir?</h3>
+                    <span class="badge badge-navy">RBAC</span>
+                </div>
+                <div class="card-body">
+                    <ul class="info-list">
+                        <li>
+                            <span class="info-icon">✓</span>
+                            <span><strong>İş İlanlarını Gör &amp; Başvur:</strong> Tüm açık pozisyonları inceleyebilir ve kendi adınıza başvuru yapabilirsiniz.</span>
+                        </li>
+                        <li>
+                            <span class="info-icon">✓</span>
+                            <span><strong>Mezun Rehberi:</strong> Sisteme kayıtlı diğer mezunları görüntüleyebilir ve ağınızı genişletebilirsiniz.</span>
+                        </li>
+                        <li>
+                            <span class="info-icon">✓</span>
+                            <span><strong>Kendi Profilini Yönet:</strong> Yalnızca kendi profil bilgilerinizi güncelleyebilirsiniz (<span class="mono">own</span>).</span>
+                        </li>
+                        <li>
+                            <span class="info-icon">✓</span>
+                            <span><strong>İş İlanı Paylaş:</strong> Profiliniz onaylandığında kendi adınıza iş ve staj ilanı yayınlayabilirsiniz.</span>
+                        </li>
+                    </ul>
+
+                    <div class="security-note">
+                        <strong>Güvenlik Garantisi:</strong> Şifreniz veritabanında asla düz metin olarak tutulmaz; her kullanıcı için benzersiz tuz (<em>salt</em>) ile <strong>BCrypt</strong> formatında saklanır ve API yanıtlarında asla paylaşılmaz. Yeni kayıtlar varsayılan olarak <strong>Alumni (Mezun)</strong> rolü ile açılır.
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Şifre göster / gizle butonları
+            document.querySelectorAll('.password-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var targetId = btn.getAttribute('data-target');
+                    var input = document.getElementById(targetId);
+                    if (!input) return;
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+            });
+
+            // Anlık şifre eşleşme geri bildirimi
+            var pass = document.getElementById('Password');
+            var confirmPass = document.getElementById('ConfirmPassword');
+            var feedback = document.getElementById('passwordMatchFeedback');
+
+            function updateMatch() {
+                if (!confirmPass.value) {
+                    feedback.textContent = '';
+                    feedback.className = 'match-feedback';
+                    return;
+                }
+                if (pass.value === confirmPass.value) {
+                    feedback.textContent = 'Şifreler eşleşiyor.';
+                    feedback.className = 'match-feedback match-ok';
+                } else {
+                    feedback.textContent = 'Şifreler henüz eşleşmiyor.';
+                    feedback.className = 'match-feedback match-err';
+                }
+            }
+
+            if (pass && confirmPass && feedback) {
+                pass.addEventListener('input', updateMatch);
+                confirmPass.addEventListener('input', updateMatch);
+            }
+        })();
+    </script>
+}

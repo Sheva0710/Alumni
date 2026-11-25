@@ -20,6 +20,7 @@
 - [Önerilen Sistem Mimarisi](#-önerilen-sistem-mimarisi)
 - [Proje Dizin Yapısı ve Dağıtılmış MVC Mimarisi](#-proje-dizin-yapısı-ve-dağıtılmış-mvc-mimarisi)
 - [HTTP Boru Hattı ve Middleware Mimarisi (The Bouncer & Guardians)](#-http-boru-hattı-ve-middleware-mimarisi-the-bouncer--guardians)
+- [Auth (Kimlik Doğrulama, Roller ve Yetkilendirme)](#auth)
 - [Veritabanı ve Veri Tasarımı (Data Design)](#-veritabanı-ve-veri-tasarımı-data-design)
 - [Marka Kimliği ve Tasarım Sistemi (Brand & Design)](#-marka-kimliği-ve-tasarım-sistemi-brand--design)
 - [Mevcut Uç Noktalar (Aktif Rotalar)](#-mevcut-uç-noktalar-aktif-rotalar)
@@ -120,10 +121,10 @@ Alumni/
 │   │   └── Alumni.Persistence/      -> [ALTYAPI] Veritabanı (PostgreSQL, DbContext, Migrations, Seed & Factories, CRUD Servisleri)
 │   └── Presentation/
 │       └── Alumni.API/
-│           ├── Controllers/         -> [CONTROLLER] MVC ve REST API controller'ları
-│           ├── Middlewares/         -> [MIDDLEWARE] RequestLogging, 5xxGuardian, 404Guardian, Bouncer
-│           ├── Common/              -> [YARDIMCI] StaticHtmlPages, FileErrorLogger
-│           ├── Views/               -> [VIEW] Razor View arayüzleri (Shared/_Layout, Shared/NotFound, User, JobPost, Application, Announcement)
+│           ├── Controllers/         -> [CONTROLLER] MVC ve REST API controller'ları (Auth, Account, Admin, User, JobPost, Application, Announcement)
+│           ├── Middlewares/         -> [MIDDLEWARE] RequestLogging, 5xxGuardian, 404Guardian, Bouncer, AuthMiddleware
+│           ├── Common/              -> [YARDIMCI] JwtTokenService, NavigationMenuBuilder, ClaimsPrincipalExtensions, StaticHtmlPages, FileErrorLogger
+│           ├── Views/               -> [VIEW] Razor View arayüzleri (Shared, Auth, Account, Admin, User, JobPost, Application, Announcement)
 │           ├── Program.cs           -> Boru hattı (Pipeline), DI, Middleware ve Rota kayıtları
 │           └── Dockerfile           -> API Konteyner inşası
 ├── docker-compose.yml               -> Proje orkestrasyonu
@@ -182,6 +183,69 @@ flowchart LR
 
 ---
 
+## Auth
+
+9. Hafta (*ID Cards: Who Are You, and What May You Do*) kapsamında sisteme uçtan uca **BCrypt şifre güvenliği**, **JWT tabanlı kimlik doğrulama**, **merkezi RBAC `AuthMiddleware`**, **Admin Paneli**, **rol tabanlı dinamik navigasyon** ve **kullanıcıya özel sayfalar** (`/profile`, `/settings`) kazandırılmıştır.
+
+> **Temel Prensip:** *"The rule is written once · the button is not the rule."*  
+> Menü veya buton gizlemek yalnızca arayüz kolaylığıdır; tüm rol ve sahiplik kuralları sunucu tarafında tek merkezden (`AuthMiddleware` + controller/service denetimleri) zorunlu olarak uygulanır.
+
+### 1. Roller ve Yetki Matrisi (*Who May Do What*)
+
+Sistemde 3 temel aktör bulunur: **`guest`** (oturumsuz ziyaretçi), **`Alumni` / `graduate`** (varsayılan kayıtlı mezun) ve **`Admin`** (sistem yöneticisi).
+
+| Eylem (Action) | `guest` | `Alumni` (`graduate`) | `Admin` | Açıklama |
+| :--- | :---: | :---: | :---: | :--- |
+| **see job postings** *(İş ilanlarını görüntüleme)* | **yes** | **yes** | **yes** | `GET /api/jobs*`, `GET /jobs*` |
+| **see users** *(Kullanıcıları görüntüleme)* | **no** | **yes** | **yes** | `GET /api/users*`, `GET /users*` (`passwordHash` asla dönmez) |
+| **sign up** *(Kayıt olma)* | **yes** | **no** | **yes** | `POST /api/register`, `/register` (herkese açık kayıtta rol daima `Alumni`) |
+| **change a profile** *(Profil güncelleme)* | **no** | **own** | **yes** | `PUT/PATCH /api/users/{id}`, `/profile`, `/settings` |
+| **delete a user** *(Kullanıcı silme)* | **no** | **no** | **yes** | `DELETE /api/users/{id}`, `/admin/users/{id}/delete` (`Restrict` kuralı) |
+| **post a job** *(İş ilanı yayınlama)* | **no** | **own** | **yes** | `POST /api/users/{id}/jobs`, `POST /jobs/create` |
+| **apply to a job** *(İş ilanına başvurma)* | **no** | **self** | **no** | `POST /api/jobs/{id}/applications` (gövdedeki `userId` yok sayılır) |
+| **admin panel** *(Yönetim paneli)* | **no** | **no** | **yes** | `/admin`, `/api/admin/overview`, `PATCH /api/admin/users/{id}/role` |
+| **personal pages** *(Profilim & Ayarlar)* | **no** | **self** | **self** | `/profile`, `/settings` |
+
+### 2. Şifre Güvenliği (*Passwords Nobody Can Read*)
+* Şifreler **`BCrypt.Net-Next`** (`workFactor: 12`) ile her kullanıcı için benzersiz tuz (`salt`) üretilerek `users.password_hash` sütununda saklanır (`AddPasswordHashToUsers` migration'ı).
+* Aynı şifreyi kullanan iki kullanıcı veritabanında tamamen farklı BCrypt özetlerine sahiptir; girişte doğrulama daima `BCrypt.Verify` ile yapılır (asla `==` kullanılmaz).
+* `User.PasswordHash` alanı `[JsonIgnore]` ve `UserResponseDto` ile izole edilmiştir; `GET /api/users` veya herhangi bir API yanıtında **asla** dışarıya döndürülmez.
+
+### 3. JWT Kimlik Kartı, Giriş ve Çıkış Akışı
+* **Kayıt (`POST /api/register` & `GET/POST /register`):** Ad, soyad, e-posta, şifre ve isteğe bağlı mezun profil bilgileriyle hesap açar (`201 Created`; mükerrer e-posta `409 Conflict`). İstemci `"role": "Admin"` gönderse dahi açık kayıtta rol her zaman **`Alumni`** olarak kilitlenir.
+* **Giriş (`POST /api/login` & `GET/POST /login`):**
+  * `{ "email", "password" }` doğrulandığında HS256 imzalı JWT üretir: `200 OK { "token": "eyJhbGci..." }`.
+  * JWT payload'ı gizli bilgi (şifre/hash) içermez; yalnızca `sub`, `id`, `name`, `email`, `role` claim'lerini taşır.
+  * Bilinmeyen e-posta ve hatalı şifre için aynı yanıt döner: **`401 Unauthorized { "error": "invalid email or password" }`**.
+  * Tarayıcı girişinde aynı JWT, `HttpOnly` + `SameSite=Lax` özellikli `alumni_auth_token` çerezine yazılır.
+* **Aktif Kimlik (`GET /api/me`):** `Authorization: Bearer <token>` başlığıyla (veya tarayıcı çereziyle) `200 OK { "id", "name", "role" }` döner.
+* **Çıkış (`POST /api/logout` & `GET/POST /logout`):** Oturum çerezini siler ve tarayıcıyı `/login?loggedOut=true` sayfasına yönlendirir.
+
+### 4. Merkezi `AuthMiddleware` ve `401` / `403` Ayrımı
+[`AuthMiddleware`](./src/Presentation/Alumni.API/Middlewares/AuthMiddleware.cs), `UseAuthentication()` sonrasında ve MVC/API model doğrulamasından **önce** çalışır:
+* **Card Before Validation:** Korumalı bir uç noktaya tokensız ve boş gövdeyle (`{}`) istek atıldığında `400 Bad Request` değil **`401 Unauthorized`** döner.
+* **`401 Unauthorized`** (`{ "error": "login required" }`) — *"I do not know who you are"*: Kart eksik, geçersiz veya süresi dolmuş (tarayıcı sayfalarında `/login?returnUrl=...` yönlendirmesi yapar).
+* **`403 Forbidden`** (`{ "error": "not allowed" }`) — *"I know who you are, and the answer is no"*: Geçerli kart var ancak rol veya sahiplik (`own` / `self`) yetersiz (ör. mezun kullanıcının başkasının adına ilan açması, kullanıcı silmeye çalışması, `/admin` paneline erişmesi veya `Admin`'in ilana başvurması).
+* **Sahiplik (`Yours, Not Someone Else's`):** `POST /api/jobs/{id}/applications` isteğinde gövdede farklı bir `"userId"` gönderilse bile yok sayılır; başvuran daima JWT'deki oturum açmış kullanıcıdır.
+
+### 5. Dinamik Navigasyon, Admin Paneli ve Kullanıcıya Özel Sayfalar
+* **Rol Tabanlı Dinamik Navigasyon ([`NavigationMenuBuilder.cs`](./src/Presentation/Alumni.API/Common/NavigationMenuBuilder.cs)):** Masaüstü, mobil ve footer menüleri kullanıcının rolüne göre dinamik üretilir (`Guest` yalnızca herkese açık sayfaları ve Giriş/Kayıt butonlarını; `Alumni` Mezunlar, Başvurularım, Profilim ve Ayarlar'ı; `Admin` ek olarak altın vurgulu **Admin Panel** sekmesini görür).
+* **Admin Paneli (`/admin` & `/api/admin/*`):** Yalnızca `Admin` rolüne açıktır. KPI özet kartlarıyla kullanıcı ekleme/silme, rol atama (`Alumni` ↔ `Admin`), iş ilanı ekleme/silme, başvuru statüsü güncelleme ve duyuru yönetimi sunar.
+* **Kullanıcıya Özel Sayfalar (`/profile` & `/settings`):** Oturum açmış kullanıcının kendi akademik/kariyer profilini (`AlumniProfile`), yayınladığı ilanları, iş başvurularını, temel hesap bilgilerini (JWT çerezini otomatik yenileyerek) ve BCrypt şifresini yönettiği kişisel sayfalardır.
+
+### 6. Postman ve Yerel Test Bilgileri
+* **Hazır Seed Hesapları (Varsayılan şifre: `secret123`):**
+  * **Admin:** `admin@alumni.edu.tr` / `secret123`
+  * **Mezun (Alumni):** `ahmet.yilmaz@example.com` / `secret123`
+* **Postman Authorization Başlığı:** `POST /api/login` yanıtından alınan token'ı korumalı isteklerde `Authorization: Bearer {{token}}` olarak ekleyin.
+* **Kendi Hesabına Veritabanından Admin Atama:**
+  ```bash
+  docker exec -it alumni-db psql -U postgres -d alumnidb -c "UPDATE users SET role = 'Admin' WHERE email = 'kullanici@example.com';"
+  ```
+  *(Rol güncellemesinin JWT kartına yansıması için çıkış yapıp yeniden giriş yapın.)*
+
+---
+
 ## 📊 Veritabanı ve Veri Tasarımı (Data Design)
 
 Mezun Takip Sistemi'nin ilişkisel veri mimarisi, PostgreSQL 16 veritabanı motoru ve Entity Framework Core ORM altyapısı temel alınarak modellenmiştir. Sistemdeki tüm tablolar, varlık modelleri (Entities), kardinaliteler, kısıtlamalar, indeksler ve silme davranışları [DATA_DESIGN.md](./DATA_DESIGN.md) dokümanında detaylandırılmıştır.
@@ -219,6 +283,21 @@ Sistemde halihazırda çalışan HTTP uç noktaları:
 | `GET` | `/sum/{n1}/{n2}` | Sayısal Hesaplama ve Parametre Doğrulama Testi |
 | `GET` | `/api/health` | API Sağlık Durumu |
 | `GET` | `/api/test-500` | 5xx Guardian Middleware Test Uç Noktası (Simüle İstisna) |
+| `GET/POST` | `/register` | Mezun Kayıt Sayfası ve Formu (MVC Razor View — `Guest` & `Admin`) |
+| `GET/POST` | `/login` | Giriş Sayfası ve HttpOnly JWT Oturum Başlatma (MVC Razor View) |
+| `GET/POST` | `/logout` | Oturumu Kapatma ve Çerez Temizleme |
+| `GET/POST` | `/profile` | Kişisel Profil Sayfası (`AlumniProfile`, İlanlarım, Başvurularım) |
+| `GET` | `/settings` | Kişisel Hesap Ayarları Sayfası (Bilgi & Şifre Değiştirme) |
+| `POST` | `/settings/account` | Kendi Ad, Soyad ve E-posta Güncelleme (JWT Yenilemeli) |
+| `POST` | `/settings/password` | Mevcut Şifre Doğrulamalı BCrypt Şifre Değiştirme |
+| `GET` | `/admin` | Admin Paneli Dashboard (Yalnızca `Admin` — `Alumni` için `403`) |
+| `POST` | `/admin/*` | Admin Veri Yönetimi (Kullanıcı/Rol, İlan, Başvuru, Duyuru) |
+| `POST` | `/api/register` | Yeni Mezun Kaydı (JSON API — `201 Created`, rol daima `Alumni`) |
+| `POST` | `/api/login` | JWT Kimlik Kartı Alma (`200 { token }` / `401 invalid email or password`) |
+| `POST` | `/api/logout` | API Oturum Çerezi Temizleme (`200 { message }`) |
+| `GET` | `/api/me` | Aktif JWT Kimlik Bilgisi (`200 { id, name, role }` / `401`) |
+| `GET` | `/api/admin/overview` | Admin Sistem Özeti & İstatistikler (Yalnızca `Admin`) |
+| `PATCH` | `/api/admin/users/{id}/role` | Kullanıcı Rolü Atama (`Alumni` / `Admin` — Yalnızca `Admin`) |
 | `GET` | `/users` | Kullanıcı Listeleme ve Ekleme Formu (MVC Razor View) |
 | `POST` | `/users` | Yeni Kullanıcı Ekleme (MVC Form POST) |
 | `GET` | `/users/details/{id}` | Kullanıcı Detay Görüntüleme (MVC View) |
@@ -398,6 +477,15 @@ docker compose up -d
   - **İş İlanları (`/jobs`):** `Index.cshtml` (`city` ve `120` karakter kuralı desteği dahil) ve `Details.cshtml` (başvuru formu ve aday tablosu) yenilendi.
   - **Başvurular (`/applications`):** `Index.cshtml` (aday adı ve ilan başlığı çözümlemesi, satır içi durum güncelleme ve doğrudan başvuru oluşturma kartı) yenilendi.
   - **Duyurular (`/announcements`):** `Index.cshtml`, `Details.cshtml` ve `Edit.cshtml` yenilendi.
+### Hafta 09: Kimlik Doğrulama (JWT & BCrypt), Merkezi `AuthMiddleware`, Admin Paneli, Dinamik Menü ve Kişisel Sayfalar
+* **Rol & Yetki Şartnamesi ([`DATA_DESIGN.md`](./DATA_DESIGN.md) v1.4):** `guest`, `Alumni` (`graduate`) ve `Admin` aktörleri için *Who May Do What* yetki matrisi, `password_hash` sütunu, `401`/`403` ayrımı ve `own`/`self` sahiplik kuralları belgelendi.
+* **Kayıt Ol ve BCrypt Şifre Güvenliği:** `BCrypt.Net-Next` entegre edildi; `AddPasswordHashToUsers` migration'ı üretildi; `/register` ve `POST /api/register` ile güvenli kayıt sağlandı; `UserResponseDto` ile `passwordHash` tüm API yanıtlarından izole edildi.
+* **JWT Login, Logout ve `/api/me`:** `JwtTokenService` ve `Microsoft.AspNetCore.Authentication.JwtBearer` ile `POST /api/login`, `POST /api/logout`, `GET /api/me` ve tarayıcı `/login` & `/logout` akışları kuruldu.
+* **Merkezi `AuthMiddleware` ve Sahiplik Denetimi:** Validasyondan önce çalışan `AuthMiddleware` tüm yetki matrisini ve `401`/`403` yanıtlarını tek merkezden zorunlu kıldı; başvurularda gövdedeki `userId` yok sayılarak oturumdaki kullanıcı esas alındı ve rol yükseltme engellendi.
+* **Admin Paneli (`/admin` & `/api/admin/*`):** Yalnızca `Admin` rolüne açık yönetim dashboard'u (kullanıcı/rol, iş ilanı, başvuru durumu ve duyuru manipülasyonu) oluşturuldu.
+* **Dinamik Navigasyon (`NavigationMenuBuilder`):** Masaüstü, mobil ve footer menü öğeleri `Guest`, `Alumni` ve `Admin` rollerine göre dinamik filtrelendi.
+* **Kullanıcıya Özel Sayfalar (`/profile` & `/settings`):** Oturum açmış kullanıcıya özel kişisel profil, ilan/başvuru özeti, hesap bilgileri ve BCrypt şifre değiştirme sayfaları geliştirildi.
+* **Dokümantasyon:** `README.md` içine kapsamlı `## Auth` bölümü ve güncel uç nokta tablosu eklendi.
 
 
 

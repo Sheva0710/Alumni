@@ -1,3 +1,4 @@
+using Alumni.API.Common;
 using Alumni.Application.DTOs.Applications;
 using Alumni.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -10,26 +11,36 @@ namespace Alumni.API.Controllers
     public class ApiApplicationController : ControllerBase
     {
         private readonly IApplicationService _applicationService;
+        private readonly IJobPostService _jobPostService;
 
-        public ApiApplicationController(IApplicationService applicationService)
+        public ApiApplicationController(
+            IApplicationService applicationService,
+            IJobPostService jobPostService)
         {
             _applicationService = applicationService;
+            _jobPostService = jobPostService;
         }
 
         /// <summary>
         /// GET /api/applications
-        /// Doğrudan Rota: Sistemdeki tüm başvuruları listeler.
+        /// Admin tüm başvuruları, Alumni yalnızca kendi başvurularını görür.
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAllApplications()
         {
             var applications = await _applicationService.GetAllAsync();
+            if (!User.IsAdminRole())
+            {
+                var currentUserId = User.GetUserId();
+                applications = applications.Where(a => a.UserId == currentUserId).ToList();
+            }
+
             return Ok(applications);
         }
 
         /// <summary>
         /// GET /api/applications/{id}
-        /// Doğrudan Rota: Belirli bir başvurunun detayını getirir.
+        /// Belirli bir başvurunun detayını getirir (yalnızca başvuran kullanıcı veya Admin).
         /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetApplicationById(int id)
@@ -40,25 +51,50 @@ namespace Alumni.API.Controllers
                 return NotFound(new { message = $"ID {id} olan başvuru bulunamadı." });
             }
 
+            if (!User.IsAdminRole() && application.UserId != User.GetUserId())
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "not allowed" });
+            }
+
             return Ok(application);
         }
 
         /// <summary>
         /// POST /api/applications
-        /// Doğrudan Rota: userId ve jobPostId ile başvuru oluşturur.
-        /// - 201 Created: Başarılı başvuru.
-        /// - 404 Not Found: İlan veya kullanıcı bulunamadı.
-        /// - 409 Conflict: Mükerrer başvuru (UNIQUE user_id, job_post_id).
+        /// Doğrudan Rota: Oturum açmış mezun kendi adına (self) başvuru oluşturur.
+        /// Gövdedeki userId yok sayılır; başvuran daima oturumdaki kullanıcıdır.
         /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateApplicationDirect([FromBody] DirectCreateApplicationRequest request)
         {
-            if (request == null || request.UserId <= 0 || request.JobPostId <= 0)
+            var currentUserId = User.GetUserId();
+            if (!currentUserId.HasValue)
             {
-                return BadRequest(new { message = "Geçerli bir userId ve jobPostId belirtilmelidir." });
+                return Unauthorized(new { error = "login required" });
             }
 
-            var result = await _applicationService.ApplyAsync(request.JobPostId, request.UserId);
+            if (User.IsAdminRole())
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "not allowed" });
+            }
+
+            if (request == null || request.JobPostId <= 0)
+            {
+                return BadRequest(new { message = "Geçerli bir jobPostId belirtilmelidir." });
+            }
+
+            var job = await _jobPostService.GetByIdAsync(request.JobPostId);
+            if (job == null)
+            {
+                return NotFound(new { message = $"ID {request.JobPostId} olan iş ilanı bulunamadı." });
+            }
+
+            if (job.PostedByUserId == currentUserId.Value)
+            {
+                return BadRequest(new { error = "Kendi yayınladığınız iş ilanına başvuru yapamazsınız." });
+            }
+
+            var result = await _applicationService.ApplyAsync(request.JobPostId, currentUserId.Value);
 
             return result.Status switch
             {
@@ -72,7 +108,7 @@ namespace Alumni.API.Controllers
 
         /// <summary>
         /// PATCH /api/applications/{id}/status
-        /// Doğrudan Rota: Başvurunun durumunu (Applied, Reviewing, Interview, Accepted, Rejected) günceller.
+        /// Başvurunun durumunu (Applied, Reviewing, Interview, Accepted, Rejected) günceller (Admin).
         /// </summary>
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateApplicationStatusRequest request)
@@ -93,17 +129,23 @@ namespace Alumni.API.Controllers
 
         /// <summary>
         /// DELETE /api/applications/{id}
-        /// Doğrudan Rota: Bir başvuruyu iptal eder / siler.
+        /// Bir başvuruyu iptal eder / siler (yalnızca başvuru sahibi veya Admin).
         /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteApplication(int id)
         {
-            var deleted = await _applicationService.DeleteAsync(id);
-            if (!deleted)
+            var application = await _applicationService.GetByIdAsync(id);
+            if (application == null)
             {
                 return NotFound(new { message = $"ID {id} olan başvuru bulunamadı." });
             }
 
+            if (!User.IsAdminRole() && application.UserId != User.GetUserId())
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "not allowed" });
+            }
+
+            await _applicationService.DeleteAsync(id);
             return NoContent();
         }
     }

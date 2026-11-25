@@ -36,6 +36,24 @@ namespace Alumni.Persistence.Seed
                 await context.SaveChangesAsync();
                 logger?.LogInformation("--> {Count} adet kullanıcı başarıyla kaydedildi.", users.Count);
             }
+            else
+            {
+                // Mevcut kullanıcıların boş kalan password_hash alanlarını güvenli BCrypt hash ile doldur
+                var usersWithoutPassword = await context.Users
+                    .Where(u => string.IsNullOrEmpty(u.PasswordHash))
+                    .ToListAsync();
+
+                if (usersWithoutPassword.Count > 0)
+                {
+                    foreach (var user in usersWithoutPassword)
+                    {
+                        user.PasswordHash = UserFactory.HashPassword(UserFactory.DefaultSeedPassword);
+                    }
+
+                    await context.SaveChangesAsync();
+                    logger?.LogInformation("--> {Count} adet mevcut kullanıcıya BCrypt şifre özeti tanımlandı.", usersWithoutPassword.Count);
+                }
+            }
 
             // 2. Mezun Profillerinin (AlumniProfiles) Tohumlanması (1-to-1)
             if (!await context.AlumniProfiles.AnyAsync())

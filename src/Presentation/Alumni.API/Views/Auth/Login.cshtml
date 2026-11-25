@@ -1,0 +1,293 @@
+@model Alumni.Application.DTOs.Auth.LoginRequest
+@{
+    ViewData["Title"] = "Giriş Yap";
+    ViewData["ActiveNav"] = "/login";
+    var errorMessage = ViewData["ErrorMessage"]?.ToString();
+    var successMessage = ViewData["SuccessMessage"]?.ToString();
+    var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+    var currentUserName = User?.FindFirst("name")?.Value ?? User?.Identity?.Name ?? "";
+    var currentUserRole = User?.FindFirst("role")?.Value ?? "";
+}
+
+@section Styles {
+    <style>
+        .login-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .required-star {
+            color: var(--status-danger);
+            margin-left: 2px;
+        }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap .form-control {
+            padding-right: 44px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle:hover {
+            color: var(--brand-navy);
+            background-color: var(--bg-surface-subtle);
+        }
+
+        .auth-footer-link {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .auth-footer-link a {
+            color: var(--brand-navy);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .auth-footer-link a:hover {
+            text-decoration: underline;
+        }
+
+        .demo-box {
+            background-color: var(--bg-canvas);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            font-size: 0.86rem;
+        }
+
+        .demo-box-title {
+            font-weight: 700;
+            color: var(--brand-navy);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .demo-cred {
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            line-height: 1.65;
+        }
+
+        .active-session-box {
+            background-color: var(--brand-navy-tint);
+            border: 1px solid #BFDBFE;
+            border-left: 4px solid var(--brand-navy);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        @@media (max-width: 900px) {
+            .login-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <div class="eyebrow-badge">
+                <span class="eyebrow-dot"></span>
+                Kimlik Doğrulama • JWT Oturum
+            </div>
+            <h1 class="page-title">Sisteme Giriş Yap</h1>
+            <p class="page-subtitle">
+                E-posta ve şifrenizle oturum açın; mezun rehberine erişin, profilinizi güncelleyin ve iş ilanlarına başvurun.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/register" class="btn btn-outline">Yeni Hesap Oluştur</a>
+        </div>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="container">
+        <div class="login-grid">
+            <!-- Giriş Formu -->
+            <div class="card">
+                <div class="card-navy-header">
+                    <h2>Oturum Aç</h2>
+                    <span class="badge badge-gold">JWT + HttpOnly Cookie</span>
+                </div>
+                <div class="card-body">
+                    @if (isAuthenticated)
+                    {
+                        <div class="active-session-box">
+                            <div>
+                                <div style="font-weight: 700; color: var(--brand-navy);">
+                                    Şu anda giriş yapılmış: @currentUserName
+                                    <span class="badge badge-navy" style="margin-left: 6px;">@currentUserRole</span>
+                                </div>
+                                <div style="font-size: 0.84rem; color: var(--text-secondary);">
+                                    Farklı bir hesapla giriş yapabilir veya mevcut oturumu kapatabilirsiniz.
+                                </div>
+                            </div>
+                            <form method="post" action="/logout" style="margin: 0;">
+                                <button type="submit" class="btn btn-sm btn-danger-outline">Çıkış Yap</button>
+                            </form>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(successMessage))
+                    {
+                        <div class="alert-success" role="status">
+                            @successMessage
+                        </div>
+                    }
+
+                    <form method="post" action="/login" novalidate>
+                        @if (!string.IsNullOrWhiteSpace(Model?.ReturnUrl))
+                        {
+                            <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                        }
+
+                        <div class="form-group">
+                            <label class="form-label" for="Email">
+                                E-posta Adresi<span class="required-star">*</span>
+                            </label>
+                            <input type="email"
+                                   id="Email"
+                                   name="Email"
+                                   class="form-control"
+                                   value="@Model?.Email"
+                                   placeholder="ornek@universite.edu.tr"
+                                   autocomplete="email"
+                                   required />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="Password">
+                                Şifre<span class="required-star">*</span>
+                            </label>
+                            <div class="password-wrap">
+                                <input type="password"
+                                       id="Password"
+                                       name="Password"
+                                       class="form-control"
+                                       placeholder="Şifrenizi girin"
+                                       autocomplete="current-password"
+                                       required />
+                                <button type="button" class="password-toggle" data-target="Password" aria-label="Şifreyi göster veya gizle">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <button type="submit" class="btn btn-navy" style="min-width: 170px;">
+                                Giriş Yap
+                            </button>
+                            <a href="/" class="btn btn-outline">Ana Sayfa</a>
+                        </div>
+                    </form>
+
+                    <div class="auth-footer-link">
+                        Henüz hesabınız yok mu? <a href="/register">Mezun hesabı oluşturun →</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bilgi & API Kullanım Kartı -->
+            <aside class="card">
+                <div class="card-header">
+                    <h3>Hızlı Test &amp; API Kimlik Kartı</h3>
+                    <span class="badge badge-navy">Auth</span>
+                </div>
+                <div class="card-body">
+                    <div class="demo-box">
+                        <div class="demo-box-title">
+                            <span>Yönetici (Admin) Hesabı</span>
+                            <span class="badge badge-gold">Admin</span>
+                        </div>
+                        <div class="demo-cred">
+                            E-posta: admin@alumni.edu.tr<br />
+                            Şifre: secret123
+                        </div>
+                    </div>
+
+                    <div class="demo-box">
+                        <div class="demo-box-title">
+                            <span>Örnek Mezun Hesabı</span>
+                            <span class="badge badge-navy">Alumni</span>
+                        </div>
+                        <div class="demo-cred">
+                            E-posta: ahmet.yilmaz@example.com<br />
+                            Şifre: secret123
+                        </div>
+                    </div>
+
+                    <div class="demo-box" style="margin-bottom: 0;">
+                        <div class="demo-box-title">
+                            <span>REST API / Postman Akışı</span>
+                            <span class="badge badge-neutral">JWT</span>
+                        </div>
+                        <div class="demo-cred">
+                            POST /api/login → 200 { token }<br />
+                            GET /api/me (Authorization: Bearer &lt;token&gt;)<br />
+                            POST /api/logout → 200 { message }
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('.password-toggle').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var targetId = btn.getAttribute('data-target');
+                    var input = document.getElementById(targetId);
+                    if (!input) return;
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                });
+            });
+        })();
+    </script>
+}

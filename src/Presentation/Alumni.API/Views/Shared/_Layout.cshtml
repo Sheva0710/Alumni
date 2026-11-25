@@ -1,7 +1,15 @@
+@using Alumni.API.Common
 @{
     var pageTitle = ViewData["Title"]?.ToString() ?? "Alumni Tracking System";
     var activeNav = ViewData["ActiveNav"]?.ToString() ?? "";
-    string NavClass(string route) => string.Equals(activeNav, route, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
+    var nav = NavigationMenuBuilder.Build(User);
+    string NavClass(NavMenuItem item)
+    {
+        var isActive = string.Equals(activeNav, item.Href, StringComparison.OrdinalIgnoreCase);
+        var cls = isActive ? "nav-link active" : "nav-link";
+        if (item.IsAccent) cls += " nav-link-accent";
+        return cls;
+    }
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -156,11 +164,52 @@
 
         .nav-link.active { font-weight: 600; }
 
+        .nav-link-accent {
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+        .nav-link-accent:hover, .nav-link-accent.active {
+            color: var(--accent-gold-hover);
+            background-color: var(--accent-gold-tint);
+        }
+
+        .mobile-nav-bar {
+            display: none;
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(255, 255, 255, 0.96);
+            overflow-x: auto;
+        }
+        .mobile-nav-inner {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 24px;
+            white-space: nowrap;
+        }
+
         .header-actions {
             display: flex;
             align-items: center;
             gap: 10px;
             flex-shrink: 0;
+        }
+
+        .user-session-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: var(--radius-pill);
+            background-color: var(--brand-navy-tint);
+            border: 1px solid #DBEAFE;
+            color: var(--brand-navy);
+            font-size: 0.84rem;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .user-session-pill:hover {
+            background-color: #DBEAFE;
         }
 
         /* Page Banner */
@@ -533,6 +582,7 @@
 
         @@media (max-width: 1023px) {
             .main-nav { display: none; }
+            .mobile-nav-bar { display: block; }
             .workspace-grid { grid-template-columns: 1fr; }
         }
 
@@ -557,20 +607,39 @@
                 <span>Alumni Network</span>
             </a>
 
-            <nav class="main-nav" aria-label="Ana Navigasyon">
-                <a href="/" class="@NavClass("/")">Ana Sayfa</a>
-                <a href="/users" class="@NavClass("/users")">Mezunlar</a>
-                <a href="/jobs" class="@NavClass("/jobs")">İş İlanları</a>
-                <a href="/applications" class="@NavClass("/applications")">Başvurular</a>
-                <a href="/announcements" class="@NavClass("/announcements")">Duyurular</a>
-                <a href="/about" class="@NavClass("/about")">Hakkında</a>
+            <nav class="main-nav" aria-label="Ana Navigasyon" data-user-role="@nav.RoleKey">
+                @foreach (var item in nav.MainNavItems)
+                {
+                    <a href="@item.Href" class="@NavClass(item)">@item.Label</a>
+                }
             </nav>
 
-            <div class="header-actions">
-                <a href="/api/swagger" class="btn btn-outline">API Docs</a>
-                <a href="/jobs" class="btn btn-gold">Fırsatları Keşfet</a>
+            <div class="header-actions" data-user-role="@nav.RoleKey">
+                @if (nav.IsAuthenticated)
+                {
+                    <a href="/profile" class="user-session-pill" title="Profilim">
+                        <span>@nav.UserName</span>
+                        <span class="badge @(nav.IsAdmin ? "badge-gold" : "badge-navy")">@nav.RoleLabel</span>
+                    </a>
+                    <form method="post" action="/logout" style="display: inline; margin: 0;">
+                        <button type="submit" class="btn btn-danger-outline btn-sm">Çıkış Yap</button>
+                    </form>
+                }
+                else
+                {
+                    <a href="/login" class="btn btn-outline">Giriş Yap</a>
+                    <a href="/register" class="btn btn-gold">Kayıt Ol</a>
+                }
             </div>
         </div>
+        <nav class="mobile-nav-bar" aria-label="Mobil Navigasyon" data-user-role="@nav.RoleKey">
+            <div class="mobile-nav-inner">
+                @foreach (var item in nav.MainNavItems)
+                {
+                    <a href="@item.Href" class="@NavClass(item)">@item.Label</a>
+                }
+            </div>
+        </nav>
     </header>
 
     <main>
@@ -583,13 +652,11 @@
                 <div class="footer-brand">Alumni Tracking System</div>
                 <div class="footer-note">Üniversite Kariyer Merkezi &amp; Mezunlar Ofisi • Akademik Lacivert &amp; Altın Tasarım Sistemi</div>
             </div>
-            <nav class="footer-links" aria-label="Alt Menü">
-                <a href="/about">Hakkında</a>
-                <a href="/users">Mezunlar</a>
-                <a href="/jobs">İş İlanları</a>
-                <a href="/applications">Başvurular</a>
-                <a href="/announcements">Duyurular</a>
-                <a href="/api/swagger">Swagger / API</a>
+            <nav class="footer-links" aria-label="Alt Menü" data-user-role="@nav.RoleKey">
+                @foreach (var item in nav.FooterItems)
+                {
+                    <a href="@item.Href">@item.Label</a>
+                }
             </nav>
         </div>
     </footer>

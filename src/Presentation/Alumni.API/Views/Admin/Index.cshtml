@@ -1,0 +1,515 @@
+@model Alumni.API.Common.AdminDashboardViewModel
+@using Alumni.API.Common
+@{
+    ViewData["Title"] = "Admin Panel";
+    ViewData["ActiveNav"] = "/admin";
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+    var errorMessage = TempData["ErrorMessage"]?.ToString();
+    var currentUserId = User.GetUserId();
+    var userLookup = Model.Users.ToDictionary(u => u.Id, u => u);
+    var jobLookup = Model.JobPosts.ToDictionary(j => j.Id, j => j);
+    var statuses = new[] { "Applied", "Reviewing", "Interview", "Accepted", "Rejected" };
+}
+
+@section Styles {
+    <style>
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-top: 3px solid var(--brand-navy);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .kpi-card.gold { border-top-color: var(--accent-gold); }
+        .kpi-card.success { border-top-color: var(--status-success); }
+
+        .kpi-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: var(--brand-navy);
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+
+        .kpi-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .admin-nav-pills {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .admin-section {
+            margin-bottom: 32px;
+            scroll-margin-top: 90px;
+        }
+
+        .inline-form {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .select-sm {
+            min-height: 32px;
+            padding: 4px 8px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+        }
+
+        .admin-split {
+            display: grid;
+            grid-template-columns: 1.55fr 0.85fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        @@media (max-width: 1024px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .admin-split { grid-template-columns: 1fr; }
+        }
+
+        @@media (max-width: 600px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+}
+
+<section class="page-banner">
+    <div class="container page-banner-inner">
+        <div>
+            <div class="eyebrow-badge">
+                <span class="eyebrow-dot"></span>
+                Yönetim Merkezi • Yalnızca Admin
+            </div>
+            <h1 class="page-title">Admin Paneli</h1>
+            <p class="page-subtitle">
+                Kullanıcı rollerini atayın, iş ilanlarını ve başvuruları yönetin, sistem duyurularını tek merkezden güncelleyin.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="/api/admin/overview" class="btn btn-outline" target="_blank">JSON Overview API</a>
+            <a href="/api/swagger" class="btn btn-navy">API Docs</a>
+        </div>
+    </div>
+</section>
+
+<section class="page-content">
+    <div class="container">
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert-success" role="status">@successMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert-danger" role="alert">@errorMessage</div>
+        }
+
+        <!-- KPI Özet Kartları -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Toplam Kullanıcı</div>
+                <div class="kpi-value tabular-nums">@Model.Users.Count</div>
+                <div class="kpi-meta">@Model.AdminCount Admin • @Model.AlumniCount Mezun</div>
+            </div>
+            <div class="kpi-card gold">
+                <div class="kpi-label">İş İlanları</div>
+                <div class="kpi-value tabular-nums">@Model.JobPosts.Count</div>
+                <div class="kpi-meta">Yayında olan tüm fırsatlar</div>
+            </div>
+            <div class="kpi-card success">
+                <div class="kpi-label">Başvurular</div>
+                <div class="kpi-value tabular-nums">@Model.Applications.Count</div>
+                <div class="kpi-meta">Toplam aday başvurusu</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Duyurular</div>
+                <div class="kpi-value tabular-nums">@Model.Announcements.Count</div>
+                <div class="kpi-meta">@Model.ActiveAnnouncementCount aktif duyuru</div>
+            </div>
+        </div>
+
+        <!-- Hızlı Geçiş Menüsü -->
+        <div class="admin-nav-pills">
+            <a href="#users" class="btn btn-sm btn-navy">1. Kullanıcılar &amp; Roller (@Model.Users.Count)</a>
+            <a href="#jobs" class="btn btn-sm btn-outline">2. İş İlanları (@Model.JobPosts.Count)</a>
+            <a href="#applications" class="btn btn-sm btn-outline">3. Başvurular (@Model.Applications.Count)</a>
+            <a href="#announcements" class="btn btn-sm btn-outline">4. Duyurular (@Model.Announcements.Count)</a>
+        </div>
+
+        <!-- =================================================================
+             1. KULLANICI & ROL YÖNETİMİ
+             ================================================================= -->
+        <div id="users" class="admin-section">
+            <div class="admin-split">
+                <div class="card">
+                    <div class="card-navy-header">
+                        <h2>Kullanıcılar ve Rol Yönetimi</h2>
+                        <span class="badge badge-gold">@Model.Users.Count Kayıt</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ad Soyad</th>
+                                    <th>E-posta</th>
+                                    <th>Rol Ata</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var u in Model.Users)
+                                {
+                                    var isAdminUser = string.Equals(u.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+                                    <tr>
+                                        <td class="mono">#@u.Id</td>
+                                        <td>
+                                            <strong>@u.FirstName @u.LastName</strong>
+                                            @if (currentUserId == u.Id)
+                                            {
+                                                <span class="badge badge-success" style="margin-left: 6px;">Siz</span>
+                                            }
+                                        </td>
+                                        <td class="mono" style="font-size: 0.82rem;">@u.Email</td>
+                                        <td>
+                                            <form method="post" action="/admin/users/@u.Id/role" class="inline-form">
+                                                <select name="role" class="select-sm" aria-label="Rol seçimi">
+                                                    <option value="Alumni" selected="@(!isAdminUser)">Alumni</option>
+                                                    <option value="Admin" selected="@(isAdminUser)">Admin</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline">Kaydet</button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <div class="row-actions">
+                                                <a href="/users/edit/@u.Id" class="btn btn-sm btn-outline">Düzenle</a>
+                                                @if (currentUserId != u.Id)
+                                                {
+                                                    <form method="post" action="/admin/users/@u.Id/delete" style="display:inline;margin:0;" onsubmit="return confirm('Kullanıcı #@u.Id silinsin mi?');">
+                                                        <button type="submit" class="btn btn-sm btn-danger-outline">Sil</button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Yeni Kullanıcı Oluştur (Admin) -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Yeni Kullanıcı Ekle</h3>
+                        <span class="badge badge-navy">Admin Yetkisi</span>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/users/create">
+                            <div class="form-group">
+                                <label class="form-label" for="adminFirstName">Ad</label>
+                                <input id="adminFirstName" name="firstName" class="form-control" placeholder="Örn. Deniz" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="adminLastName">Soyad</label>
+                                <input id="adminLastName" name="lastName" class="form-control" placeholder="Örn. Arslan" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="adminEmail">E-posta</label>
+                                <input id="adminEmail" type="email" name="email" class="form-control" placeholder="deniz@alumni.edu.tr" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="adminPassword">Şifre</label>
+                                <input id="adminPassword" type="password" name="password" class="form-control" placeholder="En az 6 karakter" minlength="6" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="adminRole">Rol</label>
+                                <select id="adminRole" name="role" class="form-control">
+                                    <option value="Alumni">Alumni (Mezun)</option>
+                                    <option value="Admin">Admin (Yönetici)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-gold btn-block">Kullanıcı Oluştur</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================
+             2. İŞ İLANLARI YÖNETİMİ
+             ================================================================= -->
+        <div id="jobs" class="admin-section">
+            <div class="admin-split">
+                <div class="card">
+                    <div class="card-navy-header">
+                        <h2>İş İlanları Yönetimi</h2>
+                        <span class="badge badge-gold">@Model.JobPosts.Count İlan</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Başlık &amp; Şirket</th>
+                                    <th>Şehir</th>
+                                    <th>İlan Sahibi</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.JobPosts.Count == 0)
+                                {
+                                    <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Henüz iş ilanı bulunmuyor.</td></tr>
+                                }
+                                else
+                                {
+                                    @foreach (var job in Model.JobPosts)
+                                    {
+                                        var ownerName = userLookup.TryGetValue(job.PostedByUserId, out var owner)
+                                            ? $"{owner.FirstName} {owner.LastName}"
+                                            : $"Kullanıcı #{job.PostedByUserId}";
+                                        <tr>
+                                            <td class="mono">#@job.Id</td>
+                                            <td>
+                                                <strong>@job.Title</strong><br />
+                                                <span style="font-size:0.8rem;color:var(--text-secondary);">@job.Company</span>
+                                            </td>
+                                            <td>@(string.IsNullOrWhiteSpace(job.City) ? "Uzaktan / Belirtilmedi" : job.City)</td>
+                                            <td>@ownerName</td>
+                                            <td>
+                                                <div class="row-actions">
+                                                    <a href="/jobs/details/@job.Id" class="btn btn-sm btn-outline">Detay</a>
+                                                    <form method="post" action="/admin/jobs/@job.Id/delete" style="display:inline;margin:0;" onsubmit="return confirm('İlan #@job.Id ve başvuruları silinsin mi?');">
+                                                        <button type="submit" class="btn btn-sm btn-danger-outline">Sil</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Yeni İş İlanı Ekle -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Yeni İş İlanı Yayınla</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/jobs/create">
+                            <div class="form-group">
+                                <label class="form-label" for="jobOwner">İlan Sahibi</label>
+                                <select id="jobOwner" name="postedByUserId" class="form-control" required>
+                                    @foreach (var u in Model.Users)
+                                    {
+                                        <option value="@u.Id" selected="@(u.Id == currentUserId)">#@u.Id — @u.FirstName @u.LastName (@u.Role)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="jobTitle">İlan Başlığı</label>
+                                <input id="jobTitle" name="title" class="form-control" maxlength="120" placeholder="Örn. Junior .NET Developer" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="jobCompany">Şirket</label>
+                                <input id="jobCompany" name="company" class="form-control" placeholder="Örn. Acme Teknoloji" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="jobCity">Şehir (Opsiyonel)</label>
+                                <input id="jobCity" name="city" class="form-control" placeholder="Örn. İstanbul" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="jobDesc">Açıklama</label>
+                                <textarea id="jobDesc" name="description" class="form-control" placeholder="Pozisyon detayları..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-navy btn-block">İlanı Yayınla</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================
+             3. BAŞVURU YÖNETİMİ
+             ================================================================= -->
+        <div id="applications" class="admin-section">
+            <div class="card">
+                <div class="card-navy-header">
+                    <h2>Başvuru Yönetimi</h2>
+                    <span class="badge badge-gold">@Model.Applications.Count Başvuru</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Aday</th>
+                                <th>İlan</th>
+                                <th>Durum Güncelle</th>
+                                <th>Tarih</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Applications.Count == 0)
+                            {
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Henüz başvuru bulunmuyor.</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var app in Model.Applications)
+                                {
+                                    var applicantText = userLookup.TryGetValue(app.UserId, out var applicant)
+                                        ? $"{applicant.FirstName} {applicant.LastName} ({applicant.Email})"
+                                        : $"Kullanıcı #{app.UserId}";
+                                    var jobText = jobLookup.TryGetValue(app.JobPostId, out var j)
+                                        ? $"{j.Title} — {j.Company}"
+                                        : $"İlan #{app.JobPostId}";
+                                    <tr>
+                                        <td class="mono">#@app.Id</td>
+                                        <td>@applicantText</td>
+                                        <td><strong>@jobText</strong></td>
+                                        <td>
+                                            <form method="post" action="/admin/applications/@app.Id/status" class="inline-form">
+                                                <select name="status" class="select-sm" aria-label="Başvuru durumu">
+                                                    @foreach (var s in statuses)
+                                                    {
+                                                        <option value="@s" selected="@(string.Equals(app.Status, s, StringComparison.OrdinalIgnoreCase))">@s</option>
+                                                    }
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline">Güncelle</button>
+                                            </form>
+                                        </td>
+                                        <td class="tabular-nums" style="font-size:0.82rem;color:var(--text-secondary);">@app.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>
+                                            <form method="post" action="/admin/applications/@app.Id/delete" style="display:inline;margin:0;" onsubmit="return confirm('Başvuru #@app.Id silinsin mi?');">
+                                                <button type="submit" class="btn btn-sm btn-danger-outline">Sil</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================================
+             4. DUYURU YÖNETİMİ
+             ================================================================= -->
+        <div id="announcements" class="admin-section">
+            <div class="admin-split">
+                <div class="card">
+                    <div class="card-navy-header">
+                        <h2>Duyurular Yönetimi</h2>
+                        <span class="badge badge-gold">@Model.Announcements.Count Duyuru</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Başlık &amp; Yazar</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Announcements.Count == 0)
+                                {
+                                    <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Henüz duyuru bulunmuyor.</td></tr>
+                                }
+                                else
+                                {
+                                    @foreach (var ann in Model.Announcements)
+                                    {
+                                        <tr>
+                                            <td class="mono">#@ann.Id</td>
+                                            <td>
+                                                <strong>@ann.Title</strong><br />
+                                                <span style="font-size:0.8rem;color:var(--text-secondary);">@ann.Author</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @(ann.IsActive ? "badge-success" : "badge-neutral")">
+                                                    @(ann.IsActive ? "Aktif" : "Pasif")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="row-actions">
+                                                    <form method="post" action="/admin/announcements/@ann.Id/toggle" style="display:inline;margin:0;">
+                                                        <button type="submit" class="btn btn-sm btn-outline">@(ann.IsActive ? "Pasif Yap" : "Aktif Yap")</button>
+                                                    </form>
+                                                    <a href="/announcements/edit/@ann.Id" class="btn btn-sm btn-outline">Düzenle</a>
+                                                    <form method="post" action="/admin/announcements/@ann.Id/delete" style="display:inline;margin:0;" onsubmit="return confirm('Duyuru #@ann.Id silinsin mi?');">
+                                                        <button type="submit" class="btn btn-sm btn-danger-outline">Sil</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Yeni Duyuru Yayınla -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Yeni Duyuru Yayınla</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/announcements/create">
+                            <div class="form-group">
+                                <label class="form-label" for="annTitle">Duyuru Başlığı</label>
+                                <input id="annTitle" name="title" class="form-control" maxlength="200" placeholder="Örn. Mezunlar Günü 2026" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="annAuthor">Yazar / Birim</label>
+                                <input id="annAuthor" name="author" class="form-control" placeholder="Kariyer Merkezi" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="annContent">İçerik</label>
+                                <textarea id="annContent" name="content" class="form-control" placeholder="Duyuru detayları..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-gold btn-block">Duyuruyu Yayınla</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

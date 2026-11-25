@@ -10,18 +10,27 @@ namespace Alumni.Persistence.Seed.Factories
     /// </summary>
     public static class UserFactory
     {
+        public const string DefaultSeedPassword = "secret123";
+
+        public static string HashPassword(string plainPassword)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(plainPassword, workFactor: 12);
+        }
+
         public static User Create(
             string firstName,
             string lastName,
             string email,
             string role = "Alumni",
-            DateTime? createdAt = null)
+            DateTime? createdAt = null,
+            string? password = null)
         {
             return new User
             {
                 FirstName = firstName,
                 LastName = lastName,
                 Email = email.ToLowerInvariant().Trim(),
+                PasswordHash = HashPassword(string.IsNullOrWhiteSpace(password) ? DefaultSeedPassword : password),
                 Role = role,
                 CreatedAt = createdAt ?? DateTime.UtcNow
             };

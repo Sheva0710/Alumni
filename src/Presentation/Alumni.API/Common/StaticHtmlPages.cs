@@ -1,10 +1,56 @@
+using System.Net;
+using System.Security.Claims;
+
 namespace Alumni.API.Common;
 
 public static class StaticHtmlPages
 {
-    private static string RenderPageShell(string pageTitle, string activePath, string extraCss, string mainContent)
+    private static string RenderPageShell(string pageTitle, string activePath, string extraCss, string mainContent, ClaimsPrincipal? user = null)
     {
-        string NavClass(string path) => activePath == path ? "nav-link active" : "nav-link";
+        var nav = NavigationMenuBuilder.Build(user);
+
+        string BuildNavClass(NavMenuItem item)
+        {
+            var isActive = string.Equals(activePath, item.Href, StringComparison.OrdinalIgnoreCase);
+            var cls = isActive ? "nav-link active" : "nav-link";
+            if (item.IsAccent) cls += " nav-link-accent";
+            return cls;
+        }
+
+        var mainNavLinksHtml = string.Join(
+            "\n                        ",
+            nav.MainNavItems.Select(item =>
+                $"<a href=\"{WebUtility.HtmlEncode(item.Href)}\" class=\"{BuildNavClass(item)}\">{WebUtility.HtmlEncode(item.Label)}</a>"));
+
+        var footerLinksHtml = string.Join(
+            "\n                        ",
+            nav.FooterItems.Select(item =>
+                $"<a href=\"{WebUtility.HtmlEncode(item.Href)}\">{WebUtility.HtmlEncode(item.Label)}</a>"));
+
+        string headerActionsHtml;
+        if (nav.IsAuthenticated)
+        {
+            var userName = WebUtility.HtmlEncode(nav.UserName);
+            var userRole = WebUtility.HtmlEncode(nav.RoleLabel);
+            var roleBadge = $"<span class=\"session-role-badge {(nav.IsAdmin ? "admin" : "")}\">{userRole}</span>";
+
+            headerActionsHtml = $"""
+                <a href="/profile" class="user-session-pill" title="Profilim">
+                    <span>{userName}</span>
+                    {roleBadge}
+                </a>
+                <form method="post" action="/logout" style="display:inline;margin:0;">
+                    <button type="submit" class="btn btn-logout">Çıkış Yap</button>
+                </form>
+                """;
+        }
+        else
+        {
+            headerActionsHtml = """
+                <a href="/login" class="btn btn-outline">Giriş Yap</a>
+                <a href="/register" class="btn btn-gold">Kayıt Ol</a>
+                """;
+        }
 
         return $$"""
         <!DOCTYPE html>
@@ -173,11 +219,83 @@ public static class StaticHtmlPages
                     font-weight: 600;
                 }
 
+                .nav-link-accent {
+                    color: var(--accent-gold);
+                    font-weight: 700;
+                }
+
+                .nav-link-accent:hover,
+                .nav-link-accent.active {
+                    color: var(--accent-gold-hover);
+                    background-color: var(--accent-gold-tint);
+                }
+
+                .mobile-nav-bar {
+                    display: none;
+                    border-top: 1px solid var(--border-subtle);
+                    background: rgba(255, 255, 255, 0.96);
+                    overflow-x: auto;
+                }
+
+                .mobile-nav-inner {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 24px;
+                    white-space: nowrap;
+                }
+
                 .header-actions {
                     display: flex;
                     align-items: center;
                     gap: 10px;
                     flex-shrink: 0;
+                }
+
+                .user-session-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 12px;
+                    border-radius: var(--radius-pill);
+                    background-color: var(--brand-navy-tint);
+                    border: 1px solid #DBEAFE;
+                    color: var(--brand-navy);
+                    font-size: 0.84rem;
+                    font-weight: 600;
+                    text-decoration: none;
+                    white-space: nowrap;
+                }
+                .user-session-pill:hover {
+                    background-color: #DBEAFE;
+                }
+                .session-role-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 2px 8px;
+                    border-radius: var(--radius-pill);
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    background-color: #FFFFFF;
+                    color: var(--brand-navy);
+                    border: 1px solid #BFDBFE;
+                }
+                .session-role-badge.admin {
+                    background-color: var(--accent-gold-tint);
+                    color: #92400E;
+                    border-color: #FDE68A;
+                }
+                .btn-logout {
+                    min-height: 34px;
+                    padding: 6px 12px;
+                    font-size: 0.8125rem;
+                    background-color: var(--bg-surface);
+                    color: #DC2626;
+                    border: 1px solid #FECACA;
+                }
+                .btn-logout:hover {
+                    background-color: #FEF2F2;
+                    border-color: #DC2626;
                 }
 
                 /* Buttons (8px radius) */
@@ -381,6 +499,9 @@ public static class StaticHtmlPages
                     .main-nav {
                         display: none;
                     }
+                    .mobile-nav-bar {
+                        display: block;
+                    }
                 }
 
                 @media (max-width: 767px) {
@@ -408,20 +529,19 @@ public static class StaticHtmlPages
                         <span>Alumni Network</span>
                     </a>
 
-                    <nav class="main-nav" aria-label="Ana Navigasyon">
-                        <a href="/" class="{{NavClass("/")}}">Ana Sayfa</a>
-                        <a href="/users" class="{{NavClass("/users")}}">Mezunlar</a>
-                        <a href="/jobs" class="{{NavClass("/jobs")}}">İş İlanları</a>
-                        <a href="/applications" class="{{NavClass("/applications")}}">Başvurular</a>
-                        <a href="/announcements" class="{{NavClass("/announcements")}}">Duyurular</a>
-                        <a href="/about" class="{{NavClass("/about")}}">Hakkında</a>
+                    <nav class="main-nav" aria-label="Ana Navigasyon" data-user-role="{{nav.RoleKey}}">
+                        {{mainNavLinksHtml}}
                     </nav>
 
-                    <div class="header-actions">
-                        <a href="/api/swagger" class="btn btn-outline">API Docs</a>
-                        <a href="/jobs" class="btn btn-gold">Fırsatları Keşfet</a>
+                    <div class="header-actions" data-user-role="{{nav.RoleKey}}">
+                        {{headerActionsHtml}}
                     </div>
                 </div>
+                <nav class="mobile-nav-bar" aria-label="Mobil Navigasyon" data-user-role="{{nav.RoleKey}}">
+                    <div class="mobile-nav-inner">
+                        {{mainNavLinksHtml}}
+                    </div>
+                </nav>
             </header>
 
             <main>
@@ -434,12 +554,8 @@ public static class StaticHtmlPages
                         <div class="footer-brand">Alumni Tracking System</div>
                         <div class="footer-note">Üniversite Kariyer Merkezi &amp; Mezunlar Ofisi • Akademik Lacivert &amp; Altın Tasarım Sistemi</div>
                     </div>
-                    <nav class="footer-links" aria-label="Alt Menü">
-                        <a href="/about">Hakkında</a>
-                        <a href="/users">Mezunlar</a>
-                        <a href="/jobs">İş İlanları</a>
-                        <a href="/announcements">Duyurular</a>
-                        <a href="/api/swagger">Swagger / API</a>
+                    <nav class="footer-links" aria-label="Alt Menü" data-user-role="{{nav.RoleKey}}">
+                        {{footerLinksHtml}}
                         <a href="mailto:alumni@ogr.iu.edu.tr">İletişim</a>
                     </nav>
                 </div>
@@ -449,7 +565,7 @@ public static class StaticHtmlPages
         """;
     }
 
-    public static string GetHomePageHtml()
+    public static string GetHomePageHtml(ClaimsPrincipal? user = null)
     {
         const string homeCss = """
                 .hero-section {
@@ -1004,10 +1120,10 @@ public static class StaticHtmlPages
                 </section>
                 """;
 
-        return RenderPageShell("Alumni Tracking System — Akademik Mezun Ağı", "/", homeCss, homeMain);
+        return RenderPageShell("Alumni Tracking System — Akademik Mezun Ağı", "/", homeCss, homeMain, user);
     }
 
-    public static string GetAboutPageHtml()
+    public static string GetAboutPageHtml(ClaimsPrincipal? user = null)
     {
         const string aboutCss = """
                 .about-hero {
@@ -1305,7 +1421,7 @@ public static class StaticHtmlPages
                 </section>
                 """;
 
-        return RenderPageShell("Hakkında — Alumni Tracking System", "/about", aboutCss, aboutMain);
+        return RenderPageShell("Hakkında — Alumni Tracking System", "/about", aboutCss, aboutMain, user);
     }
 
     public static string GetNotFoundPageHtml(string? requestedPath = null, string? reason = null)

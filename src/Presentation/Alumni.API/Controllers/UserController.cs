@@ -1,3 +1,4 @@
+using Alumni.API.Common;
 using Alumni.Application.DTOs.Users;
 using Alumni.Application.Interfaces;
 using Alumni.Domain.Entities;
@@ -49,12 +50,16 @@ namespace Alumni.API.Controllers
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Ad ve e-posta zorunludur.");
 
+            var assignedRole = User.IsAdminRole() && !string.IsNullOrWhiteSpace(request.Role)
+                ? request.Role
+                : "Alumni";
+
             var newUser = new User
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName ?? string.Empty,
                 Email = request.Email,
-                Role = request.Role ?? "Alumni"
+                Role = assignedRole
             };
 
             await _userService.AddAsync(newUser);
@@ -64,7 +69,9 @@ namespace Alumni.API.Controllers
         [HttpPost("edit/{id}")]
         public async Task<IActionResult> Edit(int id, [FromForm] UpdateUserRequest request)
         {
-            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, request.Role);
+            // Güvenlik: Alumni kendi profilini düzenlerken rol yükseltemez
+            var safeRole = User.IsAdminRole() ? request.Role : null;
+            var updated = await _userService.UpdateAsync(id, request.FirstName, request.LastName, request.Email, safeRole);
             if (!updated) return NotFound();
 
             return Redirect("/users");

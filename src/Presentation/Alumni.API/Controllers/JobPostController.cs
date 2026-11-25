@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Alumni.API.Common;
 using Alumni.Application.DTOs.Jobs;
 using Alumni.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -55,9 +56,14 @@ namespace Alumni.API.Controllers
             [FromForm] string? city,
             [FromForm] string? description)
         {
-            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company) || postedByUserId <= 0)
+            // Güvenlik (own): Alumni yalnızca kendi adına ilan açabilir; Admin kullanıcı seçebilir.
+            var effectiveOwnerId = User.IsAdminRole()
+                ? postedByUserId
+                : (User.GetUserId() ?? 0);
+
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company) || effectiveOwnerId <= 0)
             {
-                TempData["ErrorMessage"] = "Başlık, şirket ve ilan sahibi kullanıcı seçimi zorunludur.";
+                TempData["ErrorMessage"] = "Başlık, şirket ve ilan sahibi kullanıcı bilgisi zorunludur.";
                 return Redirect("/jobs");
             }
 
@@ -67,7 +73,7 @@ namespace Alumni.API.Controllers
                 return Redirect("/jobs");
             }
 
-            var created = await _jobPostService.CreateForUserAsync(postedByUserId, title, company, city, description);
+            var created = await _jobPostService.CreateForUserAsync(effectiveOwnerId, title, company, city, description);
             if (created == null)
             {
                 TempData["ErrorMessage"] = "Seçilen kullanıcı bulunamadı.";
@@ -83,13 +89,27 @@ namespace Alumni.API.Controllers
         [HttpPost("{id}/apply")]
         public async Task<IActionResult> Apply(int id, [FromForm] int userId)
         {
-            if (userId <= 0)
+            // Güvenlik (self): Formdaki userId yok sayılır; başvuran daima oturumdaki kullanıcıdır.
+            var currentUserId = User.GetUserId();
+            if (!currentUserId.HasValue)
             {
-                TempData["ErrorMessage"] = "Lütfen başvuran bir kullanıcı seçiniz.";
+                return Redirect($"/login?returnUrl=/jobs/details/{id}");
+            }
+
+            if (User.IsAdminRole())
+            {
+                TempData["ErrorMessage"] = "Admin rolündeki kullanıcılar iş ilanlarına başvuru yapamaz.";
                 return Redirect($"/jobs/details/{id}");
             }
 
-            var result = await _applicationService.ApplyAsync(id, userId);
+            var job = await _jobPostService.GetByIdAsync(id);
+            if (job != null && job.PostedByUserId == currentUserId.Value)
+            {
+                TempData["ErrorMessage"] = "Kendi yayınladığınız iş ilanına başvuru yapamazsınız.";
+                return Redirect($"/jobs/details/{id}");
+            }
+
+            var result = await _applicationService.ApplyAsync(id, currentUserId.Value);
             if (result.Status == ApplyResultStatus.Success)
             {
                 TempData["SuccessMessage"] = "Başvurunuz başarıyla kaydedildi.";
@@ -109,16 +129,21 @@ namespace Alumni.API.Controllers
         [HttpPost("delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _jobPostService.DeleteAsync(id);
-            if (deleted)
-            {
-                TempData["SuccessMessage"] = "İş ilanı ve bağlı tüm başvuruları başarıyla silindi (Cascade).";
-            }
-            else
+            var job = await _jobPostService.GetByIdAsync(id);
+            if (job == null)
             {
                 TempData["ErrorMessage"] = "İş ilanı bulunamadı.";
+                return Redirect("/jobs");
             }
 
+            if (!User.IsAdminRole() && job.PostedByUserId != User.GetUserId())
+            {
+                TempData["ErrorMessage"] = "Yalnızca kendi yayınladığınız ilanları silebilirsiniz.";
+                return Redirect("/jobs");
+            }
+
+            await _jobPostService.DeleteAsync(id);
+            TempData["SuccessMessage"] = "İş ilanı ve bağlı tüm başvuruları başarıyla silindi (Cascade).";
             return Redirect("/jobs");
         }
     }

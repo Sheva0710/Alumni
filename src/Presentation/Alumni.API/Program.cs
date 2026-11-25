@@ -1,10 +1,14 @@
+using System.Text;
+using System.Text.Json;
 using Alumni.API.Common;
 using Alumni.API.Middlewares;
 using Alumni.Application.Interfaces;
 using Alumni.Persistence;
 using Alumni.Persistence.Data;
 using Alumni.Persistence.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +21,84 @@ builder.Services.AddControllersWithViews()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddPersistenceServices(builder.Configuration);
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// JWT Kimlik Doğrulama (Header: Authorization: Bearer <token> + Tarayıcı: HttpOnly Cookie)
+var jwtSecret = builder.Configuration["Jwt:SecretKey"]
+    ?? "AlumniTrackingSystem-SuperSecret-JWT-SigningKey-2026!";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "AlumniTrackingSystem";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "AlumniTrackingSystemUsers";
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ClockSkew = TimeSpan.Zero,
+            NameClaimType = "name",
+            RoleClaimType = "role"
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // 1. Öncelik: Authorization: Bearer <token> başlığı (Postman / API istemcileri)
+                var authHeader = context.Request.Headers.Authorization.ToString();
+                if (!string.IsNullOrWhiteSpace(authHeader) &&
+                    authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.CompletedTask;
+                }
+
+                // 2. Tarayıcı oturumu: HttpOnly cookie üzerinden JWT okuma
+                if (context.Request.Cookies.TryGetValue(JwtTokenService.AuthCookieName, out var cookieToken) &&
+                    !string.IsNullOrWhiteSpace(cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+
+                return Task.CompletedTask;
+            },
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                var path = context.Request.Path.Value ?? string.Empty;
+                if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = "login required" }));
+                    return;
+                }
+
+                var returnUrl = Uri.EscapeDataString(context.Request.Path + context.Request.QueryString);
+                context.Response.Redirect($"/login?returnUrl={returnUrl}");
+            },
+            OnForbidden = async context =>
+            {
+                var path = context.Request.Path.Value ?? string.Empty;
+                if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = "not allowed" }));
+                }
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
@@ -44,10 +126,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+
+// 9. Hafta Merkezi Auth Middleware (Who May Do What RBAC & Sahiplik Kontrolü — Validasyondan Önce)
+app.UseAuthMiddleware();
+
 app.UseAuthorization();
 
 // Root route: GET / returns HTML landing page
-app.MapGet("/", () => Results.Content(StaticHtmlPages.GetHomePageHtml(), "text/html")).WithTags("General");
+app.MapGet("/", (HttpContext ctx) => Results.Content(StaticHtmlPages.GetHomePageHtml(ctx.User), "text/html")).WithTags("General");
 
 // Hello route: GET /hello returns "Hello,World!"
 app.MapGet("/hello", () => "Hello,World!").WithTags("Test");
@@ -63,7 +150,7 @@ app.MapGet("/sum/{number1:double}/{number2:double}", (double number1, double num
 }).WithTags("Test");
 
 // About route: GET /about returns HTML about page
-app.MapGet("/about", () => Results.Content(StaticHtmlPages.GetAboutPageHtml(), "text/html")).WithTags("General");
+app.MapGet("/about", (HttpContext ctx) => Results.Content(StaticHtmlPages.GetAboutPageHtml(ctx.User), "text/html")).WithTags("General");
 
 // 404 Route: GET /404 returns generic 404 HTML page (define generic 404 page)
 app.MapGet("/404", (string? path, string? reason) => 
